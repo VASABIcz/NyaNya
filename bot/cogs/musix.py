@@ -11,7 +11,7 @@ from utils.functions_classes import Track
 from utils.functions_classes import time_converter
 
 URL_REG = re.compile(r'https?://(?:www\.)?.+')
-SPOTIFY_REG = re.compile(r'^(?:https:\/\/open\.spotify\.com|spotify)([\/:])user\1([^\/]+)\1playlist\1([a-z0-9]+)')
+SPOTIFY_REG = re.compile(r'^(?:https://open\.spotify\.com|spotify)([/:])user\1([^/]+)\1playlist\1([a-z0-9]+)')
 
 class Music(commands.Cog, wavelink.WavelinkMixin):
 
