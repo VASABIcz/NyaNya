@@ -193,7 +193,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
     @commands.command()
     async def queue(self, ctx):
-        ...
+        ...#
 
 
 def setup(bot):
