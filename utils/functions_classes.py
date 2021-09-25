@@ -619,3 +619,12 @@ class Track(wavelink.Track):
         super().__init__(*args)
 
         self.requester = kwargs.get('requester')
+
+    @property
+    def embed(self) -> discord.Embed:
+        embed = discord.Embed(title=self.title, colour=EMBED_COLOR)
+        embed.set_image(url=self.thumb)
+        embed.set_footer(icon_url=self.requester.avatar_url,
+                         text=f"{self.requester.name}")
+
+        return embed

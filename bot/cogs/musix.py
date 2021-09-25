@@ -100,11 +100,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             if not tracks:
                 return await ctx.send('No songs were found with that query. Please try again.', delete_after=15)
             if isinstance(tracks, wavelink.TrackPlaylist):
-                await ctx.send(
-                    f'```ini\nAdded the playlist {tracks.data["playlistInfo"]["name"]} with {len(tracks.tracks)} songs to the queue.\n```',
-                    delete_after=15)
+                await ctx.send(embed=track.embed)
+                # await ctx.send(
+                #     f'```ini\nAdded the playlist {tracks.data["playlistInfo"]["name"]} with {len(tracks.tracks)} songs to the queue.\n```',
+                #     delete_after=15)
             else:
-                await ctx.send(f'```ini\nAdded {track.title} to the Queue\n```', delete_after=15)
+                await ctx.send(embed=track.embed)
+                # await ctx.send(f'```ini\nAdded {track.title} to the Queue\n```', delete_after=15)
 
     @commands.command(aliases=['s', 'next'])
     async def skip(self, ctx: NyaNyaContext):
