@@ -1,3 +1,6 @@
+![Discord.py-Version](https://img.shields.io/badge/discord.py-1.7.3-blue?style=flat-square)
+![Code-Lines](https://img.shields.io/tokei/lines/github/VASABIcz/NyaNya?style=flat-square)
+
 # Nya Nya bot
 
 ### cfg.py structure
