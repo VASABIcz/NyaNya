@@ -3,9 +3,9 @@
 ### cfg.py structure
 
 ```python
-OWNERS=[] # UR DISCORD ID
+OWNERS=[] # YOUR DISCORD ID
 
-MAIN_PREFIX= "!" # prefix here
+MAIN_PREFIX= "nya" # prefix here
 
 TOKEN = "" # DISCORD TOKEN HERE
 SPOTIFY_ID = "" # app id here
