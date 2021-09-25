@@ -29,4 +29,4 @@ NODES = {'MAIN': {'host': 'x.x.x.x',
 
 ### In order to use voice you need to have `java` and setuped `Lavalink`
 
-#### Checkout [Setup instructions](https://github.com/VASABIcz/bot_framework/tree/master/utils/lavalink_server)
+#### Check out [Setup instructions](https://github.com/VASABIcz/bot_framework/tree/master/utils/lavalink_server)
