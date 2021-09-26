@@ -281,7 +281,7 @@ class Nya_Nya(commands.AutoShardedBot):
                 raise Exception(f"{URL} is an invalid spotify url.")
             songs.extend(f"{item['track']['name']} {item['track']['artists'][0]['name']}" for item in items)
             nor = yes['tracks']
-            for x in range(floor(yes['tracks']['total'] / 100)):
+            for x in range(floor((yes['tracks']['total']-1) / 100)):
                 nor = self.sp.next(nor)
                 songs.extend(f"{item['track']['name']} {item['track']['artists'][0]['name']}" for item in nor['items'])
 

@@ -95,6 +95,9 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         tracks = await asyncio.gather(*[resolve_track(query) for query in queryl])
 
         for track in tracks:
+            if not track:
+                pass
+
             for t in track:
                 await player.queue.put(t)
 
