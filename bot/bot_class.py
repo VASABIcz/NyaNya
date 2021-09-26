@@ -8,7 +8,6 @@ from pathlib import Path
 
 import DiscordUtils
 import aiohttp
-import aiosqlite
 import asyncpg
 import discord
 import spotipy
@@ -94,14 +93,14 @@ class Nya_Nya(commands.AutoShardedBot):
 
     async def __ainit_(self):
         self.pdb: asyncpg.Pool = await asyncpg.create_pool(**self.cfg.DB_CREDENTIALS)
-        self.db = await aiosqlite.connect(r"D:\backup\python_projects\bot_framework\db\DATABASE")
+        # self.db = await aiosqlite.connect(r"D:\backup\python_projects\bot_framework\db\DATABASE")
 
     async def on_ready(self):
         """
         Bot is ready to run.
         """
-        print(f"[*] LOADED {self.latency * 1000:.2f} ms")
         self.invite = discord.utils.oauth_url(self.user.id, discord.Permissions(8))  # TODO change permisions etc.
+        print(f"[*] LOADED {self.latency * 1000:.2f} ms")
         await self.log_to_db()
 
     async def on_connect(self):

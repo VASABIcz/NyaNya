@@ -1,6 +1,7 @@
 import random
 import re
 
+import asyncio
 import discord
 import wavelink
 from discord.ext import commands
@@ -79,34 +80,28 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         else:
             queryl = [query, ]
 
-        for query in queryl:
-            tracks = await self.bot.wavelink.get_best_node().get_tracks(query)
-            if not tracks:
-                return await ctx.send('No songs were found with that query. Please try again.', delete_after=15)
+        async def resolve_track(query) -> list[Track] or None:
+            track = await self.bot.wavelink.get_best_node().get_tracks(query)
+            if not track:
+                await ctx.send('No songs were found with that query. Please try again.', delete_after=15)
+                return None
 
-            if isinstance(tracks, wavelink.TrackPlaylist):
-                for track in tracks.tracks:
-                    track = Track(track.id, track.info, requester=ctx.author)
-                    await player.queue.put(track)
+            if isinstance(track, wavelink.TrackPlaylist):
+                return [Track(track.id, track.info, requester=ctx.author) for track in track.tracks]
             else:
-                track = tracks[0]
-                track = Track(track.id, track.info, requester=ctx.author)
-                await player.queue.put(track)
+                track = track[0]
+                return [Track(track.id, track.info, requester=ctx.author)]
+
+        tracks = await asyncio.gather(*[resolve_track(query) for query in queryl])
+
+        for track in tracks:
+            for t in track:
+                await player.queue.put(t)
 
             if not player.is_playing:
                 await player.do_next()
 
-        else:
-            if not tracks:
-                return await ctx.send('No songs were found with that query. Please try again.', delete_after=15)
-            if isinstance(tracks, wavelink.TrackPlaylist):
-                await ctx.send(embed=track.embed)
-                # await ctx.send(
-                #     f'```ini\nAdded the playlist {tracks.data["playlistInfo"]["name"]} with {len(tracks.tracks)} songs to the queue.\n```',
-                #     delete_after=15)
-            else:
-                await ctx.send(embed=track.embed)
-                # await ctx.send(f'```ini\nAdded {track.title} to the Queue\n```', delete_after=15)
+        await ctx.send(embed=tracks[-1][-1].embed)
 
     @commands.command(aliases=['s', 'next'])
     async def skip(self, ctx: NyaNyaContext):

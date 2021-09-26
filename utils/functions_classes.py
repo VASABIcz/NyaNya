@@ -565,7 +565,7 @@ class Player(wavelink.Player):
 
         try:
             self.waiting = True
-            with async_timeout.timeout(300):
+            with async_timeout.timeout(5*60):
                 track = await self.queue.get()
         except asyncio.TimeoutError:
             # No music has been played for 5 minutes, cleanup and disconnect...
