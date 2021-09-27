@@ -559,6 +559,8 @@ class Player(wavelink.Player):
 
         self.waiting = False
 
+        self.teardown_t = self.bot.loop.create_task(self.teardown_task())
+
     async def do_next(self) -> None:
         if self.is_playing or self.waiting:
             return
@@ -574,6 +576,28 @@ class Player(wavelink.Player):
         await self.play(track)
         self.waiting = False
 
+    def check(self, member, before, after):
+        """Check if member left channel with bot, if yes check if bot is alone and procede"""
+        if before:
+            if before != after:
+                if before.channel.id == self.channel_id:
+                    if len(self.channel.members) == 1:
+                        return True
+
+        return False
+
+    async def teardown_task(self):
+        while True:
+            await self.bot.wait_for("voice_state_update", check=self.check)
+            try:
+                print("destruction on")
+                with timeout(3*60):
+                    await self.bot.wait_for("member_join_bot", check=lambda guild: guild.id == self.guild_id)
+                    print("destruction off")
+            except asyncio.TimeoutError:
+                await self.teardown()
+                self.teardown_t.cancel()
+
     @property
     def embed(self) -> discord.Embed:
         track: Track = self.current
@@ -584,6 +608,14 @@ class Player(wavelink.Player):
                          text=f"{track.requester.name} | {'⏸️' if self.paused else '▶️'} | {to_time(self.position / 1000)} / {to_time(track.length / 1000)}")
 
         return embed
+
+    @property
+    def channel(self):
+        return self.bot.get_channel(self.channel_id)
+
+    @property
+    def guild(self):
+        return self.bot.get_guild(self.guild_id)
 
     async def teardown(self):
         try:

@@ -6,6 +6,7 @@ import discord
 import wavelink
 from discord.ext import commands
 
+import utils.functions_classes
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
 from utils.functions_classes import Track
@@ -13,6 +14,14 @@ from utils.functions_classes import time_converter
 
 URL_REG = re.compile(r'https?://(?:www\.)?.+')
 SPOTIFY_REG = re.compile(r'^(?:https://open\.spotify\.com|spotify)([/:])user\1([^/]+)\1playlist\1([a-z0-9]+)')
+
+class NyaControler():
+    """
+    Responsive embed for music.
+    """
+    ...
+
+
 
 class Music(commands.Cog, wavelink.WavelinkMixin):
 
@@ -42,6 +51,14 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         for n in self.bot.cfg.NODES.values():
             await self.bot.wavelink.initiate_node(**n)
         return
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member, before, after):
+        player = self.bot.wavelink.get_player(guild_id=member.guild.id, cls=utils.functions_classes.Player, context=self)
+
+        if after:
+            if after.channel == player.channel:
+                self.bot.dispatch("member_join_bot", member.guild)
 
     @wavelink.WavelinkMixin.listener('on_track_stuck')
     @wavelink.WavelinkMixin.listener('on_track_end')
@@ -104,7 +121,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             if not player.is_playing:
                 await player.do_next()
 
-        await ctx.send(embed=tracks[-1][-1].embed)
+        await ctx.send(embed=tracks[-1][-1].embed, delete_after=30)
 
     @commands.command(aliases=['s', 'next'])
     async def skip(self, ctx: NyaNyaContext):

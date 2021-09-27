@@ -19,6 +19,8 @@ def main():
     """
     Run the bot.
     """
+    # logging.basicConfig(level=logging.DEBUG)
+
     sys.stdout, sys.stderr, sys.stdin = Unbuffered(sys.stdout), Unbuffered(sys.stderr), Unbuffered(sys.stdin)
 
     bot = Nya_Nya(cfg)
