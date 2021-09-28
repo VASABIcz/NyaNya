@@ -602,7 +602,8 @@ class Player(wavelink.Player):
         if before:
             if before != after:
                 if before.channel.id == self.channel_id:
-                    if len(self.channel.members) == 1:
+                    channel = self.channel.members  # without this id doesnt work, like explain me WTF
+                    if len(channel) == 1:
                         return True
 
         return False
