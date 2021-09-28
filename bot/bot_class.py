@@ -14,7 +14,7 @@ from spotipy import SpotifyClientCredentials
 
 from bot.context_class import NyaNyaContext
 from bot.help_class import Nya_Nya_Help
-from utils.constants import COGS, STATIC_COGS, EMBED_COLOR
+from utils.constants import COGS, STATIC_COGS, EMBED_COLOR, IGNORED, COG_DIR
 from utils.errors import *
 from utils.functions_classes import intents, NyaNyaCogs, CodeCounter, run_in_executor, codeblock
 
@@ -31,7 +31,7 @@ class Nya_Nya(commands.AutoShardedBot):
         self.vote = 'https://top.gg'  # TODO top.gg url
         self.support = 'https://discord.com'  # TODO support server idk
         self.default_emoji = "❓"
-        self.cog_manager = NyaNyaCogs(self, COGS, STATIC_COGS)
+        self.cog_manager = NyaNyaCogs(self, COGS, STATIC_COGS, IGNORED, COG_DIR)
         self.directory = str(Path(__file__).parent)
         self.voice_states = {}
 

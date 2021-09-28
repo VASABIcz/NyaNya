@@ -7,7 +7,7 @@ from discord.ext.commands import CommandError
 
 from utils.constants import EMBED_COLOR
 from utils.embeds import pretty_list
-from utils.functions_classes import NyaNyaPages, VoiceState, Player
+from utils.functions_classes import NyaNyaPages, Player
 
 
 class NyaNyaContext(commands.Context):
@@ -44,14 +44,14 @@ class NyaNyaContext(commands.Context):
     async def ok(self):
         await self.message.add_reaction("👌")
 
-    @property
-    def voice_state(self):
-        state = self.bot.voice_states.get(self.guild.id)
-        if not state:
-            state = VoiceState(self.bot, self)
-            self.bot.voice_states[self.guild.id] = state
-
-        return state
+    # @property
+    # def voice_state(self):
+    #     state = self.bot.voice_states.get(self.guild.id)
+    #     if not state:
+    #         state = VoiceState(self.bot, self)
+    #         self.bot.voice_states[self.guild.id] = state
+#
+    #     return state
 
     async def add_reaction(self, emoji):
         await self.message.add_reaction(emoji)

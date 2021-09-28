@@ -28,7 +28,7 @@ def to_time(time) -> str:
     return f"{f'{d}d ' if d else ''}{f'{h}h ' if h else ''}{f'{m}m ' if m else ''}{f'{s}s' if s else ''}"
 
 
-class Unbuffered(object):
+class Unbuffered:
     """
     Used for stdout and stderr.
     """
@@ -51,18 +51,14 @@ class Unbuffered(object):
 @dataclass
 class CodeBlock:
     """Custom class for string code and language"""
-    text: str or None
+    text: str
     language: str
 
-    def to_codeblock(self):
+    def to_codeblock(self) -> str:
         return codeblock(self.text, self.language)
 
-    def __init__(self, code, language=""):
-        self.text = code
-        self.language = language
 
-
-class cfg(object):
+class cfg:
     """
     Parse cfg.json to class.
     """
@@ -249,59 +245,84 @@ class NyaNyaCogs:
     """
     Custom class for managing cogs.
     """
-    def __init__(self, bot, cogs=[], static_cogs=()):
-        self.cogs = cogs
-        self.bot = bot
-        self.static = static_cogs
+    def __init__(self, bot, cogs=None, static_cogs=None, ignored=None, replace=""):
+        if ignored is None:
+            ignored = []
 
-    def get_filename(self, cog, replace="bot.cogs."):
+        if static_cogs is None:
+            static_cogs = []
+
+        if cogs is None:
+            cogs = []
+
+        self.bot = bot
+        self.replace = replace
+
+        self.cogs = cogs
+        self.static = static_cogs
+        self.ignored = ignored
+        self._all = self.cogs + self.static
+
+    def get_filename(self, cog):
         name = cog.__cog_name__
-        return str(cog)[1:str(cog).find(name) - 1].replace(replace, "")
+        return str(cog)[1:str(cog).find(name) - 1].replace(self.replace, "")
 
     def add_cogs(self, cogs):
         if isinstance(cogs, str):
             cogs = cogs.split(" ")
+            self.cogs.extend(cogs)
 
-        self.cogs.extend(cogs)
+        elif isinstance(cogs, list or tuple):
+            self.cogs.extend(cogs)
+
 
     async def remove_cog(self, cogs):
         if isinstance(cogs, str):
             cogs = cogs.split(" ")
 
+
         for cog in cogs:
             if not cog in self.static:
-                self.cogs.pop(cog)
+                self.cogs.remove(cog)
                 if cog in self.unloadable:
                     self.bot.unload_extension(f"bot.cogs.{cog}")
 
     @property
-    def unloadable(self):
+    def get_cogs(self):
         cogs = dict(self.bot.cogs)
-        cogs.pop("Jishaku")
-
-        for name in self.static:
-            cogs.pop(name)
+        for ignored in self.ignored:
+            cogs.pop(ignored)
 
         return [self.get_filename(cog) for cog in cogs.values()]
+
+
+    @property
+    def unloadable(self):
+        unloadable = self.get_cogs
+
+        for cog in self.static:
+            unloadable.remove(cog)
+
+        return unloadable
 
     @property
     def reloadable(self):
-        cogs = dict(self.bot.cogs)
-        cogs.pop("Jishaku")
+        reloadable = self.get_cogs
 
-        return [self.get_filename(cog) for cog in cogs.values()]
+        return reloadable
 
     @property
     def loadable(self):
         loadable = self.cogs
-        cogs = dict(self.bot.cogs)
-        cogs.pop("Jishaku")  # will cause trouble
 
-        unloadable = [self.get_filename(cog) for cog in cogs.values()]
-        for cog in unloadable:
+        for cog in self.get_cogs:
             loadable.remove(cog)
 
         return loadable
+
+    @property
+    def all(self):
+        return self._all
 
 
 class Timer:
@@ -380,105 +401,105 @@ class CodeCounter:
                 self.empty += analysis.empty_count
 
 
-class SongQueue(asyncio.Queue):
-    def __getitem__(self, item):
-        if isinstance(item, slice):
-            return list(itertools.islice(self._queue, item.start, item.stop, item.step))
-        else:
-            return self._queue[item]
+# class SongQueue(asyncio.Queue):
+#     def __getitem__(self, item):
+#         if isinstance(item, slice):
+#             return list(itertools.islice(self._queue, item.start, item.stop, item.step))
+#         else:
+#             return self._queue[item]
+#
+#     def __iter__(self):
+#         return self._queue.__iter__()
+#
+#     def __len__(self):
+#         return self.qsize()
+#
+#     def clear(self):
+#         self._queue.clear()
+#
+#     def shuffle(self):
+#         random.shuffle(self._queue)
+#
+#     def remove(self, index: int):
+#         del self._queue[index]
 
-    def __iter__(self):
-        return self._queue.__iter__()
 
-    def __len__(self):
-        return self.qsize()
-
-    def clear(self):
-        self._queue.clear()
-
-    def shuffle(self):
-        random.shuffle(self._queue)
-
-    def remove(self, index: int):
-        del self._queue[index]
-
-
-class VoiceState:
-    def __init__(self, bot, ctx: commands.Context):
-        self.bot = bot
-        self._ctx = ctx
-        self.current = None
-        self.voice = None
-        self.next = asyncio.Event()
-        self.songs = SongQueue()
-        self._loop = False
-        self._volume = 0.5
-        self.audio_player: asyncio.Task = bot.loop.create_task(self.audio_player_task())
-
-    def __del__(self):
-        self.audio_player.cancel()
-
-    @property
-    def loop(self):
-        return self._loop
-
-    @loop.setter
-    def loop(self, value: bool):
-        self._loop = value
-
-    @property
-    def volume(self):
-        return self._volume
-
-    @volume.setter
-    def volume(self, value: float):
-        self._volume = value
-
-    @property
-    def is_playing(self):
-        return self.voice and self.current
-
-    @property
-    def alone(self):
-        return not len(self.voice.channel.members) > 1
-
-    async def audio_player_task(self):
-        while True:
-            self.next.clear()
-            if not self.loop:
-                try:
-                    async with timeout(5):
-                        print("waiting for song")
-                        self.current = await self.songs.get()
-                except asyncio.TimeoutError:
-                    if self.alone:
-                        print("stoped")
-                        self.bot.loop.create_task(self.stop())
-                        return
-                    print("someone in voice")
-            self.current.source.volume = self._volume
-            self.voice.play(self.current.source, after=self.play_next_song)
-            await self.current.source.channel.send(embed=self.current.create_embed(), delete_after=60)
-            await self.next.wait()
-
-    def play_next_song(self, error=None):
-        if error:
-            raise Exception(error)
-        self.next.set()
-
-    def skip(self):
-        if self.is_playing:
-            self.voice.stop()
-
-    async def stop(self):
-        self.songs.clear()
-        try:
-            del self.bot.voice_states[self._ctx.guild.id]
-        except KeyError:
-            print("prop some desync")  # weird error stops when already stoped
-        if self.voice:
-            await self.voice.disconnect()
-        self.audio_player.cancel()
+# class VoiceState:
+#     def __init__(self, bot, ctx: commands.Context):
+#         self.bot = bot
+#         self._ctx = ctx
+#         self.current = None
+#         self.voice = None
+#         self.next = asyncio.Event()
+#         self.songs = SongQueue()
+#         self._loop = False
+#         self._volume = 0.5
+#         self.audio_player: asyncio.Task = bot.loop.create_task(self.audio_player_task())
+#
+#     def __del__(self):
+#         self.audio_player.cancel()
+#
+#     @property
+#     def loop(self):
+#         return self._loop
+#
+#     @loop.setter
+#     def loop(self, value: bool):
+#         self._loop = value
+#
+#     @property
+#     def volume(self):
+#         return self._volume
+#
+#     @volume.setter
+#     def volume(self, value: float):
+#         self._volume = value
+#
+#     @property
+#     def is_playing(self):
+#         return self.voice and self.current
+#
+#     @property
+#     def alone(self):
+#         return not len(self.voice.channel.members) > 1
+#
+#     async def audio_player_task(self):
+#         while True:
+#             self.next.clear()
+#             if not self.loop:
+#                 try:
+#                     async with timeout(5):
+#                         print("waiting for song")
+#                         self.current = await self.songs.get()
+#                 except asyncio.TimeoutError:
+#                     if self.alone:
+#                         print("stoped")
+#                         self.bot.loop.create_task(self.stop())
+#                         return
+#                     print("someone in voice")
+#             self.current.source.volume = self._volume
+#             self.voice.play(self.current.source, after=self.play_next_song)
+#             await self.current.source.channel.send(embed=self.current.create_embed(), delete_after=60)
+#             await self.next.wait()
+#
+#     def play_next_song(self, error=None):
+#         if error:
+#             raise Exception(error)
+#         self.next.set()
+#
+#     def skip(self):
+#         if self.is_playing:
+#             self.voice.stop()
+#
+#     async def stop(self):
+#         self.songs.clear()
+#         try:
+#             del self.bot.voice_states[self._ctx.guild.id]
+#         except KeyError:
+#             print("prop some desync")  # weird error stops when already stoped
+#         if self.voice:
+#             await self.voice.disconnect()
+#         self.audio_player.cancel()
 
 
 def run_in_executor(f):
