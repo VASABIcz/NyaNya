@@ -1,5 +1,6 @@
 ![Discord.py-Version](https://img.shields.io/badge/discord.py-1.7.3-blue?style=flat-square)
 ![Code-Lines](https://img.shields.io/tokei/lines/github/VASABIcz/NyaNya?style=flat-square)
+[![Discord Bots](https://top.gg/api/widget/owner/841271270015893535.svg)](https://top.gg/bot/841271270015893535)
 
 # Nya Nya bot
 
