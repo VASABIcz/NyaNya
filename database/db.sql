@@ -1,4 +1,4 @@
-create table guilds
+create table if not exists guilds
 (
     id         bigint                               not null
         constraint guilds_pk
@@ -8,10 +8,7 @@ create table guilds
     joined     boolean default true                 not null
 );
 
-alter table guilds
-    owner to pi;
-
-create table guilds_log
+create table if not exists guilds_log
 (
     id    bigserial                           not null
         constraint guilds_log_pk
@@ -21,10 +18,7 @@ create table guilds_log
     value text
 );
 
-alter table guilds_log
-    owner to pi;
-
-create table prefixes
+create table if not exists prefixes
 (
     guild_id bigint       not null,
     prefix   varchar(255) not null,
@@ -32,10 +26,7 @@ create table prefixes
         primary key (guild_id, prefix)
 );
 
-alter table prefixes
-    owner to pi;
-
-create table updates
+create table if not exists updates
 (
     id      serial                                 not null
         constraint updates_pk
@@ -44,13 +35,10 @@ create table updates
     content text      default 'not provided'::text not null
 );
 
-alter table updates
-    owner to pi;
-
-create unique index updates_date_uindex
+create unique index if not exists updates_date_uindex
     on updates (date);
 
-create table users
+create table if not exists users
 (
     id            bigint                               not null
         constraint users_pk
@@ -63,13 +51,10 @@ create table users
         unique (name, discriminator)
 );
 
-alter table users
-    owner to pi;
-
-create unique index users_id_uindex
+create unique index if not exists users_id_uindex
     on users (id);
 
-create table users_avatar_log
+create table if not exists users_avatar_log
 (
     user_id   bigint                              not null,
     avatar    bytea                               not null,
@@ -78,10 +63,7 @@ create table users_avatar_log
         primary key (user_id, timestamp)
 );
 
-alter table users_avatar_log
-    owner to pi;
-
-create table users_in_guilds
+create table if not exists users_in_guilds
 (
     guild_id bigint               not null
         constraint users_in_guilds_guilds_id_fk
@@ -97,10 +79,7 @@ create table users_in_guilds
         primary key (guild_id, user_id)
 );
 
-alter table users_in_guilds
-    owner to pi;
-
-create table users_log
+create table if not exists users_log
 (
     id    bigint    not null,
     time  timestamp not null,
@@ -109,7 +88,4 @@ create table users_log
     constraint users_log_pk
         primary key (id, time)
 );
-
-alter table users_log
-    owner to pi;
 

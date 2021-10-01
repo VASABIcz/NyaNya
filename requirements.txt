@@ -22,3 +22,4 @@ git+https://github.com/Rapptz/discord-ext-menus
 pygount
 qrcode
 textdistance
+postgres
