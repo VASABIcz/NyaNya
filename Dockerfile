@@ -1,6 +1,5 @@
+FROM ubuntu
 FROM python:3.9
-
-RUN pip install --upgrade pip
 
 WORKDIR /app
 

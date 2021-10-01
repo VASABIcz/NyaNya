@@ -1,4 +1,4 @@
-FROM openjdk
+FROM ubuntu
 FROM fredboat/lavalink:dev
 
 WORKDIR /opt/Lavalink
