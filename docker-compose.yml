@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres
+    image: huzgo1/postgres-devel
     volumes:
       - ./data/db:/var/lib/postgresql/data
     environment:
@@ -14,7 +14,7 @@ services:
       - ./data/lavalink:/opt/Lavalink/logs
   bot:
     build: .
-    command: python3 main.py
     depends_on:
       - db
       - lavalink
+    command: python3 main.py
