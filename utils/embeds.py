@@ -2,7 +2,6 @@ import datetime
 import time
 
 import discord
-from discord.ext import menus
 
 # from bot.context_class import NyaNyaContext
 from utils.constants import EMBED_COLOR, URL_REGEX
@@ -119,20 +118,3 @@ def loc_embed(code, docs, empty):
     embed.add_field(name="**Empty**", value=codeblock(f"{empty} lines", 'py'), inline=False)
 
     return embed
-
-
-class Queuepaginator(menus.ListPageSource):
-    def __init__(self, data, ctx):
-        super().__init__(data, per_page=5)
-        self.ctx = ctx
-
-    async def format_page(self, menu, entries):
-        offset = menu.current_page * self.per_page
-        embed = discord.Embed(title="queue",
-                              colour=EMBED_COLOR,
-                              timestamp=datetime.datetime.utcfromtimestamp(time.time()))
-        embed.set_footer(text=f"LOOP: {self.ctx.voice_state.queue._loop}, SONGS: {len(self.ctx.voice_state.queue)}",
-                         icon_url=f"{self.ctx.author.avatar_url}")
-        for i, v in enumerate(entries, start=offset):
-            embed.add_field(name=f"{i + 1}", value=f"[{v[1]}]({v[0]})", inline=False)
-        return embed

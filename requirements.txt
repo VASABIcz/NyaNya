@@ -18,7 +18,6 @@ psutil
 humanize
 DiscordUtils
 youtube_dl
-git+https://github.com/Rapptz/discord-ext-menus
 pygount
 qrcode
 textdistance
