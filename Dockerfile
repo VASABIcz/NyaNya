@@ -1,8 +1,8 @@
 FROM ludotech/python3.9-poetry
+WORKDIR /app
 
 RUN pip install --upgrade pip
 
-WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
