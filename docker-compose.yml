@@ -1,6 +1,6 @@
 services:
   db:
-    image: huzgo1/postgres-devel
+    image: postgres-devel
     volumes:
       - ./data/db:/var/lib/postgresql/data
     environment:
