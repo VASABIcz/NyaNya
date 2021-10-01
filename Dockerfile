@@ -1,10 +1,10 @@
-FROM ludotech/python3.9-poetry
-WORKDIR /app
+FROM python:3.9
 
 RUN pip install --upgrade pip
 
+WORKDIR /app
 
-COPY requirements.txt .
+COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
 COPY . .
