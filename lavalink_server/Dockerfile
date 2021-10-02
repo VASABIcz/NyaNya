@@ -1,7 +1,7 @@
-FROM fredboat/lavalink:dev
 FROM openjdk
+
 WORKDIR /opt/Lavalink
 
-# RUN dir
+COPY Lavalink.jar ./Lavalink.jar
 
 COPY application.yaml ./application.yaml
