@@ -21,4 +21,3 @@ youtube_dl
 pygount
 qrcode
 textdistance
-postgres

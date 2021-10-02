@@ -92,6 +92,9 @@ class Nya_Nya(commands.AutoShardedBot):
 
     async def __ainit_(self):
         self.pdb: asyncpg.Pool = await asyncpg.create_pool(**self.cfg.DB_CREDENTIALS)
+        with open("database/db.sql", "r") as f:
+            file = f.read()
+        await self.pdb.execute(file)
         # self.db = await aiosqlite.connect(r"D:\backup\python_projects\bot_framework\db\DATABASE")
 
     async def on_ready(self):

@@ -7,7 +7,6 @@ services:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_HOST_AUTH_METHOD=md5
     # expose: # use if you want access from other machine
     #   - "5432"
   lavalink:
