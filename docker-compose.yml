@@ -11,9 +11,9 @@ services:
     #   - "5432"
   lavalink:
     build: lavalink_server
-    command: java -jar Lavalink.jar
     volumes:
       - ./data/lavalink:/opt/Lavalink/logs
+    command: java -jar Lavalink.jar
     # expose:
     #   - "2333"
   bot:
