@@ -2,6 +2,7 @@
 
 import asyncio
 import sys
+import time
 
 import cfg
 from bot.bot_class import Nya_Nya
@@ -21,7 +22,7 @@ def main():
     """
     # logging.basicConfig(level=logging.DEBUG)
     # db_setup()
-
+    time.sleep(5)  # wait for lavalink to startup
     sys.stdout, sys.stderr, sys.stdin = Unbuffered(sys.stdout), Unbuffered(sys.stderr), Unbuffered(sys.stdin)
 
     bot = Nya_Nya(cfg)
