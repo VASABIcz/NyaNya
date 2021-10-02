@@ -1,4 +1,3 @@
-FROM ubuntu
 FROM openjdk
 FROM fredboat/lavalink:dev
 
