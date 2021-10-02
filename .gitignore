@@ -3,5 +3,5 @@
 cfg.py
 .cache
 /utils/lavalink_server/logs
-/utils/lavalink_server/application.yml
 data
+/utils/lavalink_server/application.yaml

@@ -1,19 +1,20 @@
+import asyncio
 import random
 import re
+from math import floor
 
-import asyncio
 import discord
 import wavelink
 from discord.ext import commands
 
-import utils.functions_classes
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
-from utils.functions_classes import Track
-from utils.functions_classes import time_converter
+from utils.constants import EMBED_COLOR
+from utils.functions_classes import Track, time_converter, codeblock, Player
 
 URL_REG = re.compile(r'https?://(?:www\.)?.+')
 SPOTIFY_REG = re.compile(r'^(?:https://open\.spotify\.com|spotify)([/:])user\1([^/]+)\1playlist\1([a-z0-9]+)')
+
 
 class NyaControler():
     """
@@ -54,7 +55,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        player = self.bot.wavelink.get_player(guild_id=member.guild.id, cls=utils.functions_classes.Player, context=self)
+        player = self.bot.wavelink.get_player(guild_id=member.guild.id, cls=Player, context=self)
 
         if after:
             if after.channel == player.channel:
@@ -81,6 +82,8 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     async def play(self, ctx, *, query: str):
         """play a song"""
         player = ctx.player
+        print(
+            "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\nEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\nEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\nEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\nEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\nEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\nEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\nEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
 
         def search_yt(value):
             return f'ytsearch:{value}'
@@ -182,20 +185,17 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     async def equalizer(self, ctx: NyaNyaContext, *, equalizer: str):
         """Change the players equalizer."""
 
-        return await ctx.send("Not functional due to library bug. :C")
+        # return await ctx.send("Not functional due to library bug. :C")
 
-        # if not ctx.player.is_connected:
-        #    return
+        if not ctx.player.is_connected:
+            return
+        eq = self.eqs.get(equalizer.lower(), None)
+        if not eq:
+            joined = "\n".join(self.eqs.keys())
+            return await ctx.send(f'Invalid EQ provided. Valid EQs:\n\n{joined}')
 
-    #
-    # eq = self.eqs.get(equalizer.lower(), None)
-    #
-    # if not eq:
-    #    joined = "\n".join(self.eqs.keys())
-    #    return await ctx.send(f'Invalid EQ provided. Valid EQs:\n\n{joined}')
-    #
-    # await ctx.send(f'Successfully changed equalizer to {equalizer}', delete_after=15)
-    # await ctx.player.set_eq(eq)
+        await ctx.send(f'Successfully changed equalizer to {equalizer}', delete_after=15)
+        await ctx.player.set_eq(eq)
 
     @commands.command()
     async def seek(self, ctx: NyaNyaContext, time: time_converter):
@@ -207,9 +207,50 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         await ctx.send(embed=ctx.player.embed)
 
     @commands.command()
-    async def queue(self, ctx):
-        ...#
+    async def queue(self, ctx: NyaNyaContext, page: int = 1):
+        qlen = len(ctx.player.queue)
+        items = 9
+
+        x = floor(qlen // items)
+        y = qlen % items
+
+        page = min(page, x + 1)
+        page = max(page, 1)
+        # print((page - 1) * 5)
+        # print(range(5 if page <= x else y))
+
+        embed = discord.Embed(title="Queue", colour=EMBED_COLOR, description=codeblock(f"{qlen} songs in queue"))
+        embed.set_footer(icon_url=ctx.author.avatar_url,
+                         text=f"{ctx.author.name} | {'⏸️' if ctx.player.paused else '▶️'} | page {page} out of {x + 1}")
+
+        for n in range(5 if page <= x else y):
+            item = ((page - 1) * items) + n
+            embed.add_field(name=f"{item + 1}.", value=codeblock(ctx.player.queue[item].title))
+        for _ in range(3 - (len(embed.fields) % 3)):
+            embed.add_field(name=f"\u200b", value=f"\u200b")
+
+        await ctx.send(embed=embed)
+
+        # embed = discord.Embed(title=track.title, description=f"{len(self.queue)} song in queue", colour=EMBED_COLOR)
+        # embed.set_image(url=track.thumb)
 
 
 def setup(bot):
     bot.add_cog(Music(bot))
+
+# Python
+# c#
+# C++/C
+# JavaScript
+# HTML
+# CSS
+# SQL (Postgresql, SqlLite)
+
+# Docker
+# Shel
+# Unity
+# Git
+# Github
+
+# nginx
+#
