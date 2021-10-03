@@ -14,8 +14,8 @@ services:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-    # expose: # use if you want access from other machine
-    #   - "5432"
+    ports:
+      - "5432:5432"
   bot:
     build: .
     depends_on:

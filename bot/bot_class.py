@@ -16,7 +16,7 @@ from bot.context_class import NyaNyaContext
 from bot.help_class import Nya_Nya_Help
 from utils.constants import COGS, STATIC_COGS, EMBED_COLOR, IGNORED, COG_DIR
 from utils.errors import *
-from utils.functions_classes import intents, NyaNyaCogs, CodeCounter, run_in_executor, codeblock
+from utils.functions_classes import intents, NyaNyaCogs, CodeCounter, codeblock
 
 
 class Nya_Nya(commands.AutoShardedBot):
@@ -271,32 +271,6 @@ class Nya_Nya(commands.AutoShardedBot):
             guild_prefixes = ()
 
         return commands.when_mentioned_or(*guild_prefixes, self.cfg.MAIN_PREFIX)(self, msg)
-
-    @run_in_executor
-    def extractor(self, URL: str):
-        songs = []
-        if "https://open.spotify.com/playlist" in URL:
-            try:
-                yes = self.sp.playlist(URL)
-                items = yes['tracks']['items']
-            except:
-                raise Exception(f"{URL} is an invalid spotify url.")
-            songs.extend(f"{item['track']['name']} {item['track']['artists'][0]['name']}" for item in items)
-            nor = yes['tracks']
-            for x in range(int((yes['tracks']['total']-1) / 100)):
-                nor = self.sp.next(nor)
-                songs.extend(f"{item['track']['name']} {item['track']['artists'][0]['name']}" for item in nor['items'])
-
-        elif "https://open.spotify.com/track" in URL:
-            try:
-                yes = self.sp.track(URL)
-            except:
-                raise Exception(f"{URL} is an invalid spotify url.")
-            songs.append(yes['name'])
-        else:
-            return [URL, ]
-
-        return songs
 
 class NyaCog(commands.Cog):
     ...

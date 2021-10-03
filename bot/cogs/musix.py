@@ -10,7 +10,7 @@ from discord.ext import commands
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
 from utils.constants import EMBED_COLOR
-from utils.functions_classes import Track, time_converter, codeblock, Player
+from utils.functions_classes import Track, time_converter, codeblock, Player, run_in_executor
 
 URL_REG = re.compile(r'https?://(?:www\.)?.+')
 SPOTIFY_REG = re.compile(r'^(?:https://open\.spotify\.com|spotify)([/:])user\1([^/]+)\1playlist\1([a-z0-9]+)')
@@ -21,6 +21,7 @@ class NyaControler():
     Responsive embed for music.
     """
     ...
+
 
 
 
@@ -52,6 +53,44 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         for n in self.bot.cfg.NODES.values():
             await self.bot.wavelink.initiate_node(**n)
         return
+
+    @run_in_executor
+    def extractor(self, URL: str):
+        songs = []
+        if "https://open.spotify.com/playlist" in URL:
+            try:
+                yes = self.bot.sp.playlist(URL)
+                items = yes['tracks']['items']
+            except:
+                raise Exception(f"{URL} is an invalid spotify url.")
+            songs.extend(f"{item['track']['name']} {item['track']['artists'][0]['name']}" for item in items)
+            nor = yes['tracks']
+            for x in range(int((yes['tracks']['total'] - 1) / 100)):
+                nor = self.bot.sp.next(nor)
+                songs.extend(f"{item['track']['name']} {item['track']['artists'][0]['name']}" for item in nor['items'])
+
+        elif "https://open.spotify.com/album" in URL:
+            try:
+                yes = self.bot.sp.album(URL)
+                items = yes['tracks']['items']
+            except:
+                raise Exception(f"{URL} is an invalid spotify url.")
+            songs.extend(f"{item['name']} {item['artists'][0]['name']}" for item in items)
+            nor = yes['tracks']
+            for x in range(int((yes['tracks']['total'] - 1) / 100)):
+                nor = self.bot.sp.next(nor)
+                songs.extend(f"{item['track']['name']} {item['track']['artists'][0]['name']}" for item in nor['items'])
+
+        elif "https://open.spotify.com/track" in URL:
+            try:
+                yes = self.bot.sp.track(URL)
+            except:
+                raise Exception(f"{URL} is an invalid spotify url.")
+            songs.append(yes['name'])
+        else:
+            return [URL, ]
+
+        return songs
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -98,7 +137,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         if not URL_REG.match(query):
             queryl = [f'ytsearch:{query}', ]
         elif 'https://open.spotify.com/' in query:
-            queryl = await self.bot.extractor(query)
+            queryl = await self.extractor(query)
             queryl = list(map(search_yt, queryl))
         else:
             queryl = [query, ]
