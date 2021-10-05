@@ -17,7 +17,7 @@ docker compose up
 
 ***
 
-### Start Lavalink
+### manual setup
 
 ````shell
 java -jar Lavalink.jar
