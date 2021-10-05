@@ -28,7 +28,7 @@ class Nya_Nya(commands.AutoShardedBot):
         self.cfg = cfg
         self.session: aiohttp.ClientSession = aiohttp.ClientSession()
         self.start_time = datetime.datetime.now()
-        self.vote = 'https://top.gg'  # TODO top.gg url
+        self.vote = 'https://top.gg/bot/841271270015893535'  # TODO top.gg url
         self.support = 'https://discord.com'  # TODO support server idk
         self.default_emoji = "❓"
         self.cog_manager = NyaNyaCogs(self, COGS, STATIC_COGS, IGNORED, COG_DIR)
@@ -127,12 +127,6 @@ class Nya_Nya(commands.AutoShardedBot):
 
         super().run(self.cfg.TOKEN)
 
-    # async def setup(self):
-    #     """
-    #     Db con.
-    #     """
-    #     self.pdb: asyncpg.Pool = await asyncpg.create_pool(**self.cfg.DB_CREDENTIALS)
-
     async def get_context(self, message, *, cls=None):
         """
         Uses custom context instead default.
@@ -207,15 +201,6 @@ class Nya_Nya(commands.AutoShardedBot):
 
                 new_ctx = await self.get_context(new_com(matches[ind].name), cls=type(ctx))
                 await self.invoke(new_ctx)
-
-
-
-
-
-
-
-
-
 
         elif isinstance(error, commands.errors.CommandOnCooldown):
             await ctx.send_exception(error)
