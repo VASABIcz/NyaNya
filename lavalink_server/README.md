@@ -1,7 +1,8 @@
 ## In order to run lavlaink you need to create `application.yml` file and run lavalink with `java` or use docker
 
-### docker
+### setup with docker
 #### this will build the image
+#### it will automaticly setup db and lavalink
 ````shell
 docker compose build
 ````
