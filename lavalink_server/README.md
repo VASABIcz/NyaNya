@@ -2,7 +2,6 @@
 
 ### setup with docker
 #### this will build the image
-#### it will automaticly setup db and lavalink
 ````shell
 docker compose build
 ````
