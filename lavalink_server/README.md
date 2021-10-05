@@ -13,7 +13,7 @@ docker compose up
 ---
 
 
-### [Official github](https://github.com/freyacodes/Lavalink)
+### [link for official Lavalink github](https://github.com/freyacodes/Lavalink)
 
 ***
 
