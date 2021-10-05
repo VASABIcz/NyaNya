@@ -1,4 +1,17 @@
-## In order to run lavlaink you need to create `application.yml` file and run lavalink with `java`
+## In order to run lavlaink you need to create `application.yml` file and run lavalink with `java` or use docker
+
+### docker
+#### this will build the image
+````shell
+docker compose build
+````
+#### this will start the bot
+````shell
+docker compose up
+````
+
+---
+
 
 ### [Official github](https://github.com/freyacodes/Lavalink)
 
