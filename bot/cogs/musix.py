@@ -279,20 +279,3 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
 def setup(bot):
     bot.add_cog(Music(bot))
-
-# Python
-# c#
-# C++/C
-# JavaScript
-# HTML
-# CSS
-# SQL (Postgresql, SqlLite)
-
-# Docker
-# Shel
-# Unity
-# Git
-# Github
-
-# nginx
-#
