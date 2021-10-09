@@ -9,14 +9,13 @@ from discord.ext import commands
 
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
-from utils.constants import EMBED_COLOR
-from utils.functions_classes import Track, time_converter, codeblock, Player, run_in_executor
+from utils.functions_classes import Track, time_converter, codeblock, run_in_executor, max_len, NyaEmbed
 
 URL_REG = re.compile(r'https?://(?:www\.)?.+')
 SPOTIFY_REG = re.compile(r'^(?:https://open\.spotify\.com|spotify)([/:])user\1([^/]+)\1playlist\1([a-z0-9]+)')
 
 
-class NyaControler():
+class NyaControler:
     """
     Responsive embed for music.
     """
@@ -88,17 +87,10 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                 raise Exception(f"{URL} is an invalid spotify url.")
             songs.append(yes['name'])
         else:
-            return [URL, ]
+            return [URL]
 
         return songs
 
-    @commands.Cog.listener()
-    async def on_voice_state_update(self, member, before, after):
-        player = self.bot.wavelink.get_player(guild_id=member.guild.id, cls=Player, context=self)
-
-        if after:
-            if after.channel == player.channel:
-                self.bot.dispatch("member_join_bot", member.guild)
 
     @wavelink.WavelinkMixin.listener('on_track_stuck')
     @wavelink.WavelinkMixin.listener('on_track_end')
@@ -121,26 +113,18 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     async def play(self, ctx: NyaNyaContext, *, query: str):
         """play a song"""
         player = ctx.player
-        print(
-            "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\nEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\nEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\nEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\nEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\nEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\nEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\nEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
-
-        await self.bot.report_webhook.send(
-            f"BRASKO PRAVJE NEKDO NAPSAL PLAY COMMAND JESTLI TO UVIDIS DVAKRAT JSI ABSOLUTNI OPICE LOL\n {ctx.author.id} {ctx.guild} {query}")
-
-        def search_yt(value):
-            return f'ytsearch:{value}'
 
         if not player.is_connected:
             await ctx.invoke(self.connect_)
 
-        query = query.strip('<>')
+        query = query.strip('<>')  # handle no embed link
         if not URL_REG.match(query):
-            queryl = [f'ytsearch:{query}', ]
+            queryl = [f'ytsearch:{query}']
         elif 'https://open.spotify.com/' in query:
             queryl = await self.extractor(query)
-            queryl = list(map(search_yt, queryl))
+            queryl = list(map(lambda v: f'ytsearch:{v}', queryl))
         else:
-            queryl = [query, ]
+            queryl = [query]
 
         async def resolve_track(query) -> list[Track] or None:
             track = await self.bot.wavelink.get_best_node().get_tracks(query)
@@ -227,17 +211,16 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     async def equalizer(self, ctx: NyaNyaContext, *, equalizer: str):
         """Change the players equalizer."""
 
-        # return await ctx.send("Not functional due to library bug. :C")
+        return await ctx.send("Not functional due to library bug. :C")
 
-        if not ctx.player.is_connected:
-            return
-        eq = self.eqs.get(equalizer.lower(), None)
-        if not eq:
-            joined = "\n".join(self.eqs.keys())
-            return await ctx.send(f'Invalid EQ provided. Valid EQs:\n\n{joined}')
-
-        await ctx.send(f'Successfully changed equalizer to {equalizer}', delete_after=15)
-        await ctx.player.set_eq(eq)
+        # if not ctx.player.is_connected:
+        #    return
+        # eq = self.eqs.get(equalizer.lower(), None)
+        # if not eq:
+        #    joined = "\n".join(self.eqs.keys())
+        #    return await ctx.send(f'Invalid EQ provided. Valid EQs:\n\n{joined}')
+        # await ctx.send(f'Successfully changed equalizer to {equalizer}', delete_after=15)
+        # await ctx.player.set_eq(eq)
 
     @commands.command()
     async def seek(self, ctx: NyaNyaContext, time: time_converter):
@@ -258,41 +241,20 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
         page = min(page, x + 1)
         page = max(page, 1)
-        # print((page - 1) * 5)
-        # print(range(5 if page <= x else y))
 
-        embed = discord.Embed(title="Queue", colour=EMBED_COLOR, description=codeblock(f"{qlen} songs in queue"))
+        embed = NyaEmbed(title="Queue", description=codeblock(f"{qlen} songs in queue"))
         embed.set_footer(icon_url=ctx.author.avatar_url,
                          text=f"{ctx.author.name} | {'⏸️' if ctx.player.paused else '▶️'} | page {page} out of {x + 1}")
 
-        for n in range(5 if page <= x else y):
+        for n in range(6 if page <= x else y):
             item = ((page - 1) * items) + n
-            embed.add_field(name=f"{item + 1}.", value=codeblock(ctx.player.queue[item].title))
+            embed.add_field(name=max_len(f"{item + 1}. {ctx.player.queue[item].title}", 50),
+                            value=f"[link]({ctx.player.queue[item].uri})", inline=False)
         for _ in range(3 - (len(embed.fields) % 3)):
             embed.add_field(name=f"\u200b", value=f"\u200b")
 
         await ctx.send(embed=embed)
 
-        # embed = discord.Embed(title=track.title, description=f"{len(self.queue)} song in queue", colour=EMBED_COLOR)
-        # embed.set_image(url=track.thumb)
-
 
 def setup(bot):
     bot.add_cog(Music(bot))
-
-# Python
-# c#
-# C++/C
-# JavaScript
-# HTML
-# CSS
-# SQL (Postgresql, SqlLite)
-
-# Docker
-# Shel
-# Unity
-# Git
-# Github
-
-# nginx
-#
