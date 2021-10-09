@@ -2,10 +2,9 @@ import datetime
 import itertools
 import time
 
-import discord
 from discord.ext import commands
 
-from utils.constants import EMBED_COLOR
+from utils.functions_classes import NyaEmbed
 
 
 class Nya_Nya_Help(commands.HelpCommand):
@@ -23,9 +22,9 @@ class Nya_Nya_Help(commands.HelpCommand):
     def default_help(self, cogs, update):
         default_prefix = self.context.bot.cfg.MAIN_PREFIX
         cogs.sort()
-        embed = discord.Embed(title=f"Default prefix is: **{default_prefix}**", colour=EMBED_COLOR,
-                              description=f"```diff\n- [] = optional argument\n- <> = required argument\n+ for more info use:\n+ {default_prefix}help [category]\n+ {default_prefix}help [command]```",
-                              timestamp=datetime.datetime.utcfromtimestamp(time.time()))  # TODO add to cfg.
+        embed = NyaEmbed(title=f"Default prefix is: **{default_prefix}**",
+                         description=f"```diff\n- [] = optional argument\n- <> = required argument\n+ for more info use:\n+ {default_prefix}help [category]\n+ {default_prefix}help [command]```",
+                         timestamp=datetime.datetime.utcfromtimestamp(time.time()))  # TODO add to cfg.
 
         embed.set_author(name="Nya Nya", url="https://github.com/VASABIcz",
                          icon_url="https://cdn.discordapp.com/avatars/841271270015893535/ccab84cb5b9b3082e874d2c5d8961769.webp?size=1024")
@@ -51,7 +50,7 @@ class Nya_Nya_Help(commands.HelpCommand):
         commands.sort()
         default_prefix = self.context.bot.cfg.MAIN_PREFIX
 
-        embed = discord.Embed(title=cog.description, colour=EMBED_COLOR, )
+        embed = NyaEmbed(title=cog.description)
         # description=f"```diff\n- [] = optional argument\n- <> = required argument\n+ for more info use:\n+ {default_prefix}help [category]\n+ {default_prefix}help [command]```")
 
         embed.set_author(name="Nya Nya", url="https://github.com/VASABIcz",
@@ -65,8 +64,7 @@ class Nya_Nya_Help(commands.HelpCommand):
         help = command.help
         help = help if help else self.no_info
 
-        embed = discord.Embed(title=help if len(help) <= 256 else help[:253] + "...",
-                              colour=EMBED_COLOR)
+        embed = NyaEmbed(title=help if len(help) <= 256 else help[:253] + "...")
         # description=f"```diff\n- [] = optional argument\n- <> = required argument\n+ for more info use:\n+ {default_prefix}help [category]\n+ {default_prefix}help [command]```")
 
         embed.set_author(name="Nya Nya", url="https://github.com/VASABIcz",

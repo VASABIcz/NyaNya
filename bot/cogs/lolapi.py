@@ -1,15 +1,13 @@
 from ast import literal_eval
 
-import discord
-
-from bot.bot_class import Nya_Nya
-from utils.constants import EMBED_COLOR, LOL_REGIONS
+from bot.bot_class import Nya_Nya, NyaEmbed
+from utils.constants import LOL_REGIONS
 from utils.errors import *
 
 
 def summoner_embed(name, icon, update, flex, solo, level, champs, mains):
-    embed = discord.Embed(title=name, colour=EMBED_COLOR,
-                          description=f"[u.gg](https://u.gg/lol/profile/eun1/{name}/overview) | [op.gg](https://eune.op.gg/summoner/userName={name}) | [leagueofgraphs.com](https://www.leagueofgraphs.com/en/summoner/eune/{name})")
+    embed = NyaEmbed(title=name,
+                     description=f"[u.gg](https://u.gg/lol/profile/eun1/{name}/overview) | [op.gg](https://eune.op.gg/summoner/userName={name}) | [leagueofgraphs.com](https://www.leagueofgraphs.com/en/summoner/eune/{name})")
 
     embed.set_thumbnail(url=f"https://ddragon.leagueoflegends.com/cdn/11.12.1/img/profileicon/{icon}.png")
     embed.set_footer(text=f"Last update: {update}")

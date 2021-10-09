@@ -11,7 +11,6 @@ import async_timeout
 import discord
 import wavelink
 import websockets
-from async_timeout import timeout
 from discord.ext import commands
 from discord.ext.commands import MemberConverter
 from pygount import SourceAnalysis
@@ -26,6 +25,11 @@ def to_time(time) -> str:
     d, h = divmod(h, 24)
 
     return f"{f'{d}d ' if d else ''}{f'{h}h ' if h else ''}{f'{m}m ' if m else ''}{f'{s}s' if s else ''}"
+
+
+class NyaEmbed(discord.Embed):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs, colour=EMBED_COLOR)
 
 
 class Unbuffered:
@@ -182,9 +186,8 @@ class NyaNyaPages:
 
     @property
     def embed(self):
-        embed = discord.Embed(title=self.title if self.title else "paginator",
-                              description=codeblock(self.pages[self.current_page], language=self.cb_language),
-                              colour=EMBED_COLOR)
+        embed = NyaEmbed(title=self.title if self.title else "paginator",
+                         description=codeblock(self.pages[self.current_page], language=self.cb_language))
         embed.set_footer(text=f"Page: <{self.current_page + 1}/{len(self.pages)}>" if not self.closed else "Closed",
                          icon_url=self.bot.user.avatar_url)
 
@@ -580,7 +583,7 @@ class Player(wavelink.Player):
 
         self.waiting = False
 
-        self.teardown_t = self.bot.loop.create_task(self.teardown_task())
+        # self.teardown_t = self.bot.loop.create_task(self.teardown_task())
 
     async def do_next(self) -> None:
         if self.is_playing or self.waiting:
@@ -588,7 +591,7 @@ class Player(wavelink.Player):
 
         try:
             self.waiting = True
-            with async_timeout.timeout(5*60):
+            with async_timeout.timeout(5 * 60):
                 track = await self.queue.get()
         except asyncio.TimeoutError:
             # No music has been played for 5 minutes, cleanup and disconnect...
@@ -597,34 +600,24 @@ class Player(wavelink.Player):
         await self.play(track)
         self.waiting = False
 
-    def check(self, member, before, after):
-        """Check if member left channel with bot, if yes check if bot is alone and procede"""
-        if before:
-            if before != after:
-                if before.channel.id == self.channel_id:
-                    channel = self.channel.members  # without this id doesnt work, like explain me WTF
-                    if len(channel) == 1:
-                        return True
-
-        return False
-
-    async def teardown_task(self):
-        while True:
-            await self.bot.wait_for("voice_state_update", check=self.check)
-            try:
-                print("destruction on")
-                with timeout(3*60):
-                    await self.bot.wait_for("member_join_bot", check=lambda guild: guild.id == self.guild_id)
-                    print("destruction off")
-            except asyncio.TimeoutError:
-                await self.teardown()
-                self.teardown_t.cancel()
+    # def check(self, member, before, after):
+    #     print("check")
+    #     if not self.channel:
+    #         return False
+    #     if len(self.channel.members) == 1:
+    #         return True
+    #     else:
+    #         return False
+    # async def teardown_task(self):
+    #     while True:
+    #         xd = await self.bot.wait_for("voice_state_update", check=self.check)
+    #         print(xd)
 
     @property
-    def embed(self) -> discord.Embed:
+    def embed(self) -> NyaEmbed:
         track: Track = self.current
 
-        embed = discord.Embed(title=track.title, description=f"{len(self.queue)} song in queue", colour=EMBED_COLOR)
+        embed = NyaEmbed(title=track.title, description=f"(link)[{track.uri}]")
         embed.set_image(url=track.thumb)
         embed.set_footer(icon_url=track.requester.avatar_url,
                          text=f"{track.requester.name} | {'⏸️' if self.paused else '▶️'} | {to_time(self.position / 1000)} / {to_time(track.length / 1000)}")
@@ -675,10 +668,14 @@ class Track(wavelink.Track):
         self.requester = kwargs.get('requester')
 
     @property
-    def embed(self) -> discord.Embed:
-        embed = discord.Embed(title=self.title, colour=EMBED_COLOR)
+    def embed(self) -> NyaEmbed:
+        embed = NyaEmbed(title=self.title)
         embed.set_image(url=self.thumb)
         embed.set_footer(icon_url=self.requester.avatar_url,
                          text=f"{self.requester.name}")
 
         return embed
+
+
+def max_len(text, lenght, end="..."):
+    return text[:lenght - len(end)] + end

@@ -5,9 +5,8 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import CommandError
 
-from utils.constants import EMBED_COLOR
 from utils.embeds import pretty_list
-from utils.functions_classes import NyaNyaPages, Player
+from utils.functions_classes import NyaNyaPages, Player, NyaEmbed
 
 
 class NyaNyaContext(commands.Context):
@@ -21,7 +20,7 @@ class NyaNyaContext(commands.Context):
             if content:
                 content = discord.utils.escape_mentions(content)
             if embed:
-                embed = discord.Embed.from_dict(literal_eval(discord.utils.escape_mentions(str(embed.to_dict()))))
+                embed = NyaEmbed.from_dict(literal_eval(discord.utils.escape_mentions(str(embed.to_dict()))))
 
         return await super().send(content=content, tts=tts, embed=embed, file=file,
                                   files=files, delete_after=delete_after, nonce=nonce,
@@ -29,12 +28,12 @@ class NyaNyaContext(commands.Context):
                                   mention_author=mention_author)
 
     async def send_error(self, error):
-        embed = discord.Embed(title="ERROR", description=f"```ini\n[{error}]```", colour=EMBED_COLOR)
+        embed = NyaEmbed(title="ERROR", description=f"```ini\n[{error}]```")
 
         await self.send(embed=embed)
 
     async def send_exception(self, error):
-        embed = discord.Embed(title="EXCEPTION", description=f"```ini\n[{error}]```", colour=EMBED_COLOR)
+        embed = NyaEmbed(title="EXCEPTION", description=f"```ini\n[{error}]```")
 
         await self.send(embed=embed)
 

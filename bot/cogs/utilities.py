@@ -13,8 +13,8 @@ from discord.ext import commands
 
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
-from utils.constants import EMBED_COLOR
 from utils.embeds import calculator_embed
+from utils.functions_classes import NyaEmbed
 
 
 class Misc(commands.Cog):
@@ -87,7 +87,7 @@ class Misc(commands.Cog):
                 f"https://v2.convertapi.com/convert/web/to/png?Secret=Avb55RKO3PkE0MD5&Url={url}&StoreFile=true&ImageWidth=1920&ImageHeight=1080") as response:
             response = await response.json()
         img = response['Files'][0]['Url']
-        embed = discord.Embed(title="Result", colour=EMBED_COLOR)
+        embed = NyaEmbed(title="Result")
         embed.set_image(url=img)
         await ctx.send(embed=embed)
 
@@ -98,9 +98,8 @@ class Misc(commands.Cog):
         proc = psutil.Process()
         mem = proc.memory_full_info()
 
-        embed = discord.Embed(title=self.bot.user.name,
-                              description=f"**Owner**\n```{owner.name}#{owner.discriminator}```",
-                              colour=EMBED_COLOR)
+        embed = NyaEmbed(title=self.bot.user.name,
+                         description=f"**Owner**\n```{owner.name}#{owner.discriminator}```")
         embed.add_field(name="Cpu usage", value=f"```{psutil.cpu_percent(interval=1)}%```")
         embed.add_field(name="Memory usage",
                         value=f"```{humanize.naturalsize(mem.rss)}```")  # humanize.naturalsize(mem.vms), humanize.naturalsize(mem.uss)
@@ -128,13 +127,13 @@ class Misc(commands.Cog):
     @commands.command(name="invite")
     async def send_invite(self, ctx):
         """Sends bot invite link."""
-        embed = discord.Embed(title="Invite", colour=EMBED_COLOR, url=self.bot.invite)
+        embed = NyaEmbed(title="Invite", url=self.bot.invite)
         await ctx.send(embed=embed)
 
     @commands.command(name="avatar")
     async def send_icon(self, ctx, target: typing.Union[discord.Member, discord.User]):
         """Sends anyones avatar"""
-        embed = discord.Embed(title="Avatar", colour=EMBED_COLOR)
+        embed = NyaEmbed(title="Avatar")
         embed.add_field(name="png", value=f"[link]({target.avatar_url_as(format='png')})")
         embed.add_field(name="jpg", value=f"[link]({target.avatar_url_as(format='jpg')})")
         embed.add_field(name="default", value=f"[link]({target.avatar_url})")
@@ -144,8 +143,7 @@ class Misc(commands.Cog):
     @commands.command(name="uptime", aliases=['running'])
     async def send_uptime(self, ctx):
         """Ssends bot uptime."""
-        embed = discord.Embed(title="Started", description=humanize.naturaltime(self.bot.start_time),
-                              colour=EMBED_COLOR)
+        embed = NyaEmbed(title="Started", description=humanize.naturaltime(self.bot.start_time))
         await ctx.send(embed=embed)
 
     # @commands.is_owner()
@@ -172,7 +170,7 @@ class Misc(commands.Cog):
                 image_binary.seek(0)
 
                 file = discord.File(image_binary, filename="image.png")
-                embed = discord.Embed(title="QR code", colour=EMBED_COLOR)
+                embed = NyaEmbed(title="QR code")
                 embed.set_image(url="attachment://image.png")
                 await ctx.send(embed=embed, file=file)
         else:

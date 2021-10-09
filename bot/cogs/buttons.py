@@ -8,6 +8,7 @@ from discord_components import *
 
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
+from utils.functions_classes import NyaEmbed
 
 
 class Games(commands.Cog):
@@ -22,7 +23,7 @@ class Games(commands.Cog):
         buttons = [[Button(style=ButtonStyle.blue, label="⏸️", id="PAUSED"),
                     Button(style=ButtonStyle.green, label="▶️", id="PLAYING"),
                     Button(style=ButtonStyle.red, label="⏹️", id="STOP")]]
-        embed = discord.Embed(title="PLAYER", color=discord.colour.Colour.dark_blue())
+        embed = NyaEmbed(title="PLAYER")
         await ctx.send(embed=embed, components=buttons)
 
     @commands.command(aliases=['ttt'])
@@ -60,10 +61,9 @@ class Games(commands.Cog):
             ]
         ]
 
-        embed = discord.Embed(title="TIC TAC TOE",
-                              colour=discord.Colour(0xec64a3),
-                              timestamp=datetime.datetime.utcfromtimestamp(time.time()),
-                              description=f"```ini\n[{ctx.author.display_name}]``````css\n[{who.display_name}]```")
+        embed = NyaEmbed(title="TIC TAC TOE",
+                         timestamp=datetime.datetime.utcfromtimestamp(time.time()),
+                         description=f"```ini\n[{ctx.author.display_name}]``````css\n[{who.display_name}]```")
 
         message = await ctx.send(embed=embed, components=buttons)
 
@@ -112,10 +112,9 @@ class Games(commands.Cog):
                 for button_list in buttons:
                     for button in button_list:
                         button.disabled = True
-                embed = discord.Embed(title="TIC TAC TOE\nTIMED OUT",
-                                      colour=discord.Colour(0xec64a3),
-                                      timestamp=datetime.datetime.utcfromtimestamp(time.time()),
-                                      description=f"```ini\n[{ctx.author.display_name}]``````css\n[{who.display_name}]```")
+                embed = NyaEmbed(title="TIC TAC TOE\nTIMED OUT",
+                                 timestamp=datetime.datetime.utcfromtimestamp(time.time()),
+                                 description=f"```ini\n[{ctx.author.display_name}]``````css\n[{who.display_name}]```")
                 await message.edit(components=buttons, embed=embed)
                 return
 

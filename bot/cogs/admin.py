@@ -14,9 +14,8 @@ from jishaku.shell import ShellReader
 
 from bot.bot_class import Nya_Nya, NyaCog
 from bot.context_class import NyaNyaContext
-from utils.constants import EMBED_COLOR
 from utils.embeds import std_embed, cogman_embed, loc_embed
-from utils.functions_classes import codeblock, CodeConveter
+from utils.functions_classes import codeblock, CodeConveter, NyaEmbed
 
 
 class GlobalChannel(commands.Converter):
@@ -126,6 +125,8 @@ class Admin(NyaCog):
         """
         !!FORCE SHUTDOWN!!
         """
+        await self.bot.pdb.close()
+        await self.bot.session.close()
         os.kill(os.getpid(), signal.SIGTERM)
 
     @commands.is_owner()
@@ -138,9 +139,9 @@ class Admin(NyaCog):
 
     @commands.is_owner()
     @commands.command(name="update", hidden=True)
-    async def git_update(self, ctx: NyaNyaContext, branch=""):
+    async def git_update(self, ctx: NyaNyaContext):
         """Simple update command."""
-        proc = await asyncio.create_subprocess_shell(f'git pull {branch}', stdout=asyncio.subprocess.PIPE,
+        proc = await asyncio.create_subprocess_shell(f'git pull', stdout=asyncio.subprocess.PIPE,
                                                      stderr=asyncio.subprocess.PIPE)
 
         stdout, stderr = await proc.communicate()
@@ -222,7 +223,7 @@ class Admin(NyaCog):
         query2 = "SELECT id FROM guilds where banned = true"
         user_bans = [str(x[0]) for x in await self.bot.pdb.fetch(query)]
         guild_bans = [str(x[0]) for x in await self.bot.pdb.fetch(query2)]
-        embed = discord.Embed(title="Bans", colour=EMBED_COLOR)
+        embed = NyaEmbed(title="Bans")
         embed.add_field(name="**User bans:**", value="\n".join(user_bans if user_bans else ("None",)))
         embed.add_field(name="**Guild bans:**", value="\n".join(guild_bans if guild_bans else ("None",)))
         await ctx.send(embed=embed)
@@ -273,6 +274,12 @@ class Admin(NyaCog):
         msg.content = ctx.prefix + command
         new_ctx = await self.bot.get_context(msg, cls=type(ctx))
         await self.bot.invoke(new_ctx)
+
+    @commands.is_owner()
+    @commands.command()
+    async def testemb(self, ctx: NyaNyaContext, *, e):
+        embed = NyaEmbed(title=e)
+        await ctx.send(embed=embed)
 
 
 def setup(bot):

@@ -14,9 +14,9 @@ from spotipy import SpotifyClientCredentials
 
 from bot.context_class import NyaNyaContext
 from bot.help_class import Nya_Nya_Help
-from utils.constants import COGS, STATIC_COGS, EMBED_COLOR, IGNORED, COG_DIR
+from utils.constants import COGS, STATIC_COGS, IGNORED, COG_DIR
 from utils.errors import *
-from utils.functions_classes import intents, NyaNyaCogs, CodeCounter, codeblock
+from utils.functions_classes import intents, NyaNyaCogs, CodeCounter, codeblock, NyaEmbed
 
 
 class Nya_Nya(commands.AutoShardedBot):
@@ -112,7 +112,8 @@ class Nya_Nya(commands.AutoShardedBot):
         print("[*] CONNECTED")
 
     async def on_message_edit(self, before, after):
-        await self.process_commands(after)
+        if before.message != after.message:  # prevents double invocation ex.: (when u send spotify url it edits message and adds custom embed)
+            await self.process_commands(after)
 
     def run(self):
         """
@@ -173,7 +174,7 @@ class Nya_Nya(commands.AutoShardedBot):
             if not matches:
                 return
 
-            embed = discord.Embed(title="Did you meant?", colour=EMBED_COLOR)
+            embed = NyaEmbed(title="Did you meant?")
             for x, command in enumerate(matches):
                 embed.add_field(name=f"> **{x + 1}.**", value=codeblock(
                     f"<{command.name}{' ' + command.cog.qualified_name if command.cog else ''}>", "md"))
@@ -207,15 +208,6 @@ class Nya_Nya(commands.AutoShardedBot):
 
                 new_ctx = await self.get_context(new_com(matches[ind].name), cls=type(ctx))
                 await self.invoke(new_ctx)
-
-
-
-
-
-
-
-
-
 
         elif isinstance(error, commands.errors.CommandOnCooldown):
             await ctx.send_exception(error)

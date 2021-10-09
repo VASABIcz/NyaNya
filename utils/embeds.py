@@ -1,21 +1,18 @@
 import datetime
 import time
 
-import discord
-
 # from bot.context_class import NyaNyaContext
-from utils.constants import EMBED_COLOR, URL_REGEX
-from utils.functions_classes import codeblock
+from utils.constants import URL_REGEX
+from utils.functions_classes import codeblock, NyaEmbed
 
 
-def play_embed(ctx, queue: int, data: list) -> discord.Embed:
+def play_embed(ctx, queue: int, data: list) -> NyaEmbed:
     m, s = divmod(data[4], 60)
     h, m = divmod(m, 60)
     duration = f'{h:d}:{m:02d}:{s:02d}'
-    embed = discord.Embed(title=data[1],
-                          colour=EMBED_COLOR,
-                          url=data[0],
-                          timestamp=datetime.datetime.utcfromtimestamp(time.time()))
+    embed = NyaEmbed(title=data[1],
+                     url=data[0],
+                     timestamp=datetime.datetime.utcfromtimestamp(time.time()))
     embed.set_image(url=data[3])
     embed.set_footer(text=f"requested by {ctx.author}",
                      icon_url=f"{ctx.author.avatar_url}")
@@ -27,10 +24,8 @@ def play_embed(ctx, queue: int, data: list) -> discord.Embed:
     return embed
 
 
-def info_embed(ctx, name: str, data: dict, thumbnail: str = None) -> discord.Embed:
-    embed = discord.Embed(title=name,
-                          colour=EMBED_COLOR,
-                          timestamp=datetime.datetime.utcfromtimestamp(time.time()))
+def info_embed(ctx, name: str, data: dict, thumbnail: str = None) -> NyaEmbed:
+    embed = NyaEmbed(title=name, timestamp=datetime.datetime.utcfromtimestamp(time.time()))
 
     embed.set_footer(text=f"requested by {ctx.author}",
                      icon_url=f"{ctx.author.avatar_url}")
@@ -52,26 +47,26 @@ def info_embed(ctx, name: str, data: dict, thumbnail: str = None) -> discord.Emb
 
 
 def picture_embed(js):
-    embed = discord.Embed(title=js['title'], url=js['url'], colour=EMBED_COLOR, timestamp=datetime.datetime.now())
+    embed = NyaEmbed(title=js['title'], url=js['url'], timestamp=datetime.datetime.now())
     embed.set_image(url=js['url'])
     embed.set_footer(text=f"⬆️ {js['ups']}")
     return embed
 
 
-def error_embed(error) -> discord.Embed:
-    embed = discord.Embed(title="ERROR", description=f"```ini\n[{error}]```", colour=EMBED_COLOR)
+def error_embed(error) -> NyaEmbed:
+    embed = NyaEmbed(title="ERROR", description=f"```ini\n[{error}]```")
     return embed
 
 
-def exception_embed(exception) -> discord.Embed:
-    embed = discord.Embed(title="EXCEPTION", description=f"```ini\n[{exception}]```", colour=EMBED_COLOR)
+def exception_embed(exception) -> NyaEmbed:
+    embed = NyaEmbed(title="EXCEPTION", description=f"```ini\n[{exception}]```")
     return embed
 
 
 def market_embed(values):
     values = values[0]
-    embed = discord.Embed(title=values['name'], description="",
-                          url="https://tarkov-market.com/item/" + values['market_url'], colour=EMBED_COLOR)
+    embed = NyaEmbed(title=values['name'], description="",
+                     url="https://tarkov-market.com/item/" + values['market_url'])
     embed.set_thumbnail(url=values['icon'])
     embed.add_field(name="Market", value=f"[here](https://tarkov-market.com/item/{values['market_url']})", inline=True)
     embed.add_field(name="Wiki", value=f"[here]({values['wiki_url']})", inline=True)
@@ -80,7 +75,7 @@ def market_embed(values):
 
 
 def search_embed(values):
-    embed = discord.Embed(title='Results', description="", colour=EMBED_COLOR)
+    embed = NyaEmbed(title='Results', description="")
     for value in values:
         embed.add_field(name=f"{value['name']}",
                         value=f"```{value['price']}₽```\n[wiki link]({value['wiki_url']}) | [market link](https://tarkov-market.com/item/{value['market_url']})",
@@ -89,15 +84,15 @@ def search_embed(values):
 
 
 def calculator_embed(expresion, result):
-    return discord.Embed(title="Result", description=f"```{expresion} = {result}```", colour=EMBED_COLOR)
+    return NyaEmbed(title="Result", description=f"```{expresion} = {result}```")
 
 
 def std_embed(title, desc, type="py"):
-    return discord.Embed(title=title, description=codeblock(desc, type), colour=EMBED_COLOR)
+    return NyaEmbed(title=title, description=codeblock(desc, type))
 
 
 def cogman_embed(data):
-    embed = discord.Embed(title="Results", colour=EMBED_COLOR)
+    embed = NyaEmbed(title="Results")
     for x in data:
         embed.add_field(name=x[0], value=x[1], inline=False)
 
@@ -105,14 +100,13 @@ def cogman_embed(data):
 
 
 def pretty_list(data, title=""):
-    embed = discord.Embed(title=title, description=codeblock("\"" + "\" | \"".join(data) + "\"", "py"),
-                          colour=EMBED_COLOR)
+    embed = NyaEmbed(title=title, description=codeblock("\"" + "\" | \"".join(data) + "\"", "py"))
 
     return embed
 
 
 def loc_embed(code, docs, empty):
-    embed = discord.Embed(title="", colour=EMBED_COLOR)  # **Lines of code counter**
+    embed = NyaEmbed(title="")  # **Lines of code counter**
     embed.add_field(name="**Code**", value=codeblock(f"{code} lines", 'py'), inline=False)
     embed.add_field(name="**Docs**", value=codeblock(f"{docs} lines", 'py'), inline=False)
     embed.add_field(name="**Empty**", value=codeblock(f"{empty} lines", 'py'), inline=False)
