@@ -204,7 +204,7 @@ class NyaNyaPages:
         if reaction.message.id != self.message.id:
             return False
 
-        if self.owner == None:
+        if self.owner is None:
             return True
         elif self.owner == member:
             return True
