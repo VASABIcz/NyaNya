@@ -4,8 +4,6 @@ services:
     volumes:
       - ./data/lavalink:/opt/Lavalink/logs
     command: java -jar Lavalink.jar
-    # expose:
-    #   - "2333"
   db:
     image: postgres
     volumes:
