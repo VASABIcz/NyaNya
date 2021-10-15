@@ -1,4 +1,5 @@
 import asyncio
+import collections
 import functools
 import itertools
 import json
@@ -6,17 +7,16 @@ import os
 import random
 import time
 from dataclasses import dataclass
-import collections
 
 import async_timeout
 import discord
 import wavelink
 import websockets
-from discord.ext import commands
 from discord.ext.commands import MemberConverter
 from pygount import SourceAnalysis
 
 from utils.constants import EMBED_COLOR
+from utils.errors import *
 
 
 def to_time(time) -> str:
@@ -411,19 +411,31 @@ def run_in_executor(f):
 
     return inner
 
+
+class Old:
+    def __init__(self, len):
+        self.len = len
+        self._queue = []
+
+    def put(self, item):
+        if len(self._queue) == self.len:
+            del self._queue[-1]
+
+        self._queue.insert(0, item)
+
+    def get(self):
+        return self._queue.pop(0)
+
+
 class Que:
     """This custom queue is specifically made for wavelink so u shouldn't use it anywhere else"""
-    # goals:
-    # async
-    # put, get, consume
-    # noloop, loop, loop1
-
-    # TODO rewind like 5 songs
 
     def __init__(self):
         self._queue = []
+        self._old = Old(5)
+
         self._loop = asyncio.get_event_loop()
-        self.loop = 0 # 0 = no loop, 1 = loop one, 2 = loop
+        self.loop = 0  # 0 = no loop, 1 = loop one, 2 = loop
 
         self._getters = collections.deque()
 
@@ -461,6 +473,12 @@ class Que:
     def skip_to(self, index):
         self._queue = self._queue[index:] + self._queue[:index]
 
+    def revert(self):
+        try:
+            self._queue.insert(0, self._old.get())
+        except IndexError:
+            raise NoMoreSongsInCache
+
     def _put(self, item):
         self._queue.append(item)
 
@@ -468,12 +486,12 @@ class Que:
         return self._queue[0]
 
     def _consume(self):
-        return self._queue.pop(0)
+        item = self._queue.pop(0)
+        self._old.put(item)
+        return item
 
     def empty(self):
-        # faster bool conversion
         return not self._queue
-
 
     def _wakeup_next(self, waiters):
         while waiters:
@@ -484,59 +502,36 @@ class Que:
 
 
     async def put(self, item):
-        """Put an item into the queue.
-
-        Put an item into the queue. If the queue is full, wait until a free
-        slot is available before adding item.
-        """
         return self.put_nowait(item)
 
 
     def put_nowait(self, item):
-        """Put an item into the queue without blocking.
-
-        If no free slot is immediately available, raise QueueFull.
-        """
         self._put(item)
         self._wakeup_next(self._getters)
 
     def get_nowait(self):
-        """Remove and return an item from the queue.
-
-        Return an item if one is immediately available, else raise QueueEmpty.
-        """
         if self.empty():
             raise Exception("random exc in que")
         return self._get()
 
 
     async def get(self):
-        """Remove and return an item from the queue.
-
-        If queue is empty, wait until an item is available.
-        """
         while self.empty():
             getter = self._loop.create_future()
             self._getters.append(getter)
             try:
                 await getter
             except:
-                getter.cancel()  # Just in case getter is not done yet.
+                getter.cancel()
                 try:
-                    # Clean self._getters from canceled getters.
                     self._getters.remove(getter)
                 except ValueError:
-                    # The getter could be removed from self._getters by a
-                    # previous put_nowait call.
                     pass
                 if not self.empty() and not getter.cancelled():
-                    # We were woken up by put_nowait(), but can't take
-                    # the call.  Wake up the next in line.
                     self._wakeup_next(self._getters)
                 raise
 
         return self.get_nowait()
-
 
     def consume(self):
         if self.loop == 0:
@@ -544,7 +539,7 @@ class Que:
         elif self.loop == 1:
             ...
         elif self.loop == 2:
-            self._put(self._consume())
+            self._put(self._queue.pop(0))
 
 
 class Player(wavelink.Player):
@@ -611,7 +606,7 @@ class Player(wavelink.Player):
     def embed(self) -> NyaEmbed:
         track: Track = self.current
 
-        embed = NyaEmbed(title=track.title, description=f"[link]({track.uri})")
+        embed = NyaEmbed(title=track.title, description=f"🔗[link]({track.uri})")
         embed.set_image(url=track.thumb)
         embed.set_footer(icon_url=track.requester.avatar_url,
                          text=f"{track.requester.name} | {'⏸️' if self.paused else '▶️'} { ' | ' + self.queue.loop_emoji if self.queue.loop_emoji else ''} | {to_time(self.position / 1000)} / {to_time(track.length / 1000)}")

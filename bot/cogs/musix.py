@@ -1,14 +1,14 @@
 import asyncio
-import random
 import re
 from math import floor
 
 import discord
 import wavelink
-from discord.ext import commands, tasks
+from discord.ext import tasks
 
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
+from utils.errors import *
 from utils.functions_classes import Track, time_converter, codeblock, run_in_executor, max_len, NyaEmbed
 
 URL_REG = re.compile(r'https?://(?:www\.)?.+')
@@ -58,6 +58,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
 
 
+
     @run_in_executor
     def extractor(self, URL: str):
         songs = []
@@ -101,19 +102,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     @wavelink.WavelinkMixin.listener('on_track_end')
     @wavelink.WavelinkMixin.listener('on_track_exception')
     async def on_player_stop(self, node: wavelink.Node, payload):
-        print(payload.reason)
         await payload.player.do_next()
-
-    @commands.command(name='connect')
-    async def connect_(self, ctx, *, channel: discord.VoiceChannel = None):
-        if not channel:
-            try:
-                channel = ctx.author.voice.channel
-            except AttributeError:
-                raise discord.DiscordException('No channel to join. Please either specify a valid channel or join one.')
-
-        await ctx.send(f'Connecting to **`{channel.name}`**')
-        await ctx.player.connect(channel.id)
 
     async def prepare_input(self, query):
         """
@@ -141,7 +130,6 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         async def resolve_tracks(query) -> list[Track] or None:
             track = await self.bot.wavelink.get_best_node().get_tracks(query)
 
-            print(track)
             if track is None:
                 await ctx.send('No songs were found with that query. Please try again.', delete_after=15)
                 return
@@ -151,6 +139,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             else:
                 track = track[0]
                 return [Track(track.id, track.info, requester=ctx.author)]
+
 
         # parse input to lavalink compatible format
         prepared = await self.prepare_input(query)
@@ -174,6 +163,16 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         # send embed to inform everything is done
         await ctx.send(embed=tracks[0][0].embed, delete_after=30)
 
+    @commands.command(name='connect')
+    async def connect_(self, ctx, *, channel: discord.VoiceChannel = None):
+        if not channel:
+            try:
+                channel = ctx.author.voice.channel
+            except AttributeError:
+                raise NotConnected
+
+        await ctx.send(f'Connecting to **`{channel.name}`**')
+        await ctx.player.connect(channel.id)
 
     @play.before_invoke
     async def _connect(self, ctx):
@@ -188,7 +187,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     @commands.command(aliases=['st', 'jump'])
     async def skipto(self, ctx: NyaNyaContext, index: int):
         """skips to given index"""
-        ctx.player.queue.skip_to(index-1)
+        ctx.player.queue.skip_to(index - 1)
+        ctx.player.ignore = True
+        await ctx.player.stop()
+
+    @commands.command()
+    async def revert(self, ctx: NyaNyaContext):
+        ctx.player.queue.revert()
         ctx.player.ignore = True
         await ctx.player.stop()
 
@@ -229,8 +234,14 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         if len(ctx.player.queue) == 0:
             return await ctx.send('Empty queue.')
 
-        ctx.player.queue.remove(index - 1)
-        await ctx.message.add_reaction('✅')
+        index -= 1
+
+        if index == 1:
+            raise ForbidentoRemovePlaying
+        try:
+            ctx.player.queue.remove(index - 1)
+        except IndexError:
+            raise OutOfbounds(index + 1)
 
     @commands.command(aliases=['loopqueue', 'loopq', 'qloop'])
     async def loop(self, ctx: NyaNyaContext):
@@ -269,7 +280,10 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
     @commands.command(aliases=['np', 'cp', 'nowplaying'])
     async def now_playing(self, ctx: NyaNyaContext):
-        await ctx.send(embed=ctx.player.embed)
+        if ctx.player.is_playing:
+            await ctx.send(embed=ctx.player.embed)
+        else:
+            raise NothingPlaying
 
     @commands.command()
     async def queue(self, ctx: NyaNyaContext, page: int = 1):
@@ -288,8 +302,10 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
         for n in range(6 if page <= x else y):
             item = ((page - 1) * items) + n
-            embed.add_field(name=max_len(f"{item + 1}.{' (Now playing)' if item + 1 == 1 else ''} {ctx.player.queue[item].title}", 50),
-                            value=f"[link]({ctx.player.queue[item].uri})", inline=False)
+            embed.add_field(
+                name=max_len(f"{item + 1}.{' (Now playing)' if item + 1 == 1 else ''} {ctx.player.queue[item].title}",
+                             50),
+                value=f"🔗[link]({ctx.player.queue[item].uri})", inline=False)
         for _ in range(3 - (len(embed.fields) % 3)):
             embed.add_field(name=f"\u200b", value=f"\u200b")
 
@@ -299,7 +315,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     async def cog_check(self, ctx):
         nodes = [n for n in self.bot.wavelink.nodes.values() if n.is_available]
         if not nodes:
-            await ctx.send("Our audio sending sever isn't available")
+            await ctx.send("Our audio sending sever isn't available at the moment")
             return False
 
         return True

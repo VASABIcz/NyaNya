@@ -149,63 +149,7 @@ class Nya_Nya(commands.AutoShardedBot):
             await ctx.send_exception(error)
 
         elif isinstance(error, commands.errors.CommandNotFound):
-            def get_name(command):
-                return command.name
-
-            def new_com(com: str) -> discord.Message:
-                content = ctx.message.content
-                content = content.strip(ctx.prefix).strip(" ")
-                content = content.split(" ")
-                content[0] = com
-                ctx.message.content = ctx.prefix + " ".join(content)
-
-                return ctx.message
-
-            commandz = self.commands
-            if ctx.author.id not in self.owner_ids:
-                filtered = await ctx.filter_commands(commandz, sort=True)
-            else:
-                filtered = commandz
-
-            commandz = map(get_name, filtered)
-            matches = tuple(map(self.get_command, get_close_matches(ctx.invoked_with, commandz, 3)))
-            if not matches:
-                return
-
-            embed = NyaEmbed(title="Did you meant?")
-            for x, command in enumerate(matches):
-                embed.add_field(name=f"> **{x + 1}.**", value=codeblock(
-                    f"<{command.name}{' ' + command.cog.qualified_name if command.cog else ''}>", "md"))
-
-            message = await ctx.send(embed=embed)
-
-            def check(reaction, member):
-                if reaction.message.id != message.id:
-                    return False
-
-                if ctx.author == member:
-                    return True
-                else:
-                    return False
-
-            reactions = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"]
-
-            for x in range(len(matches)):
-                await message.add_reaction(reactions[x])
-
-            for _ in range(1):
-                try:
-                    reaction, member = await self.wait_for('reaction_add', timeout=10, check=check)
-                except asyncio.TimeoutError:
-                    await message.delete()
-                    return
-
-                await message.delete()
-
-                ind = reactions.index(reaction.emoji)
-
-                new_ctx = await self.get_context(new_com(matches[ind].name), cls=type(ctx))
-                await self.invoke(new_ctx)
+            await self.did_you_meant(ctx)
 
         elif isinstance(error, commands.errors.CommandOnCooldown):
             await ctx.send_exception(error)
@@ -218,6 +162,21 @@ class Nya_Nya(commands.AutoShardedBot):
 
         elif isinstance(error, ItemNotFound):
             await ctx.send_exception(error)
+
+        elif isinstance(error, NothingPlaying):
+            await ctx.send_exception("Nothing is playing right now")
+
+        elif isinstance(error, NoMoreSongsInCache):
+            await ctx.send_exception("No more items stored in revrt cache")
+
+        elif isinstance(error, OutOfbounds):
+            await ctx.send_exception(error)
+
+        elif isinstance(error, ForbidentoRemovePlaying):
+            await ctx.send_exception("Cant remove currently playing")
+
+        elif isinstance(error, NotConnected):
+            await ctx.send_exception('No channel to join. Please either specify a valid channel or join one.')
 
         else:
             await ctx.send_error(error)
@@ -261,6 +220,65 @@ class Nya_Nya(commands.AutoShardedBot):
             guild_prefixes = ()
 
         return commands.when_mentioned_or(*guild_prefixes, self.cfg.MAIN_PREFIX)(self, msg)
+
+    async def did_you_meant(self, ctx):
+        def get_name(command):
+            return command.name
+
+        def new_com(com: str) -> discord.Message:
+            content = ctx.message.content
+            content = content.strip(ctx.prefix).strip(" ")
+            content = content.split(" ")
+            content[0] = com
+            ctx.message.content = ctx.prefix + " ".join(content)
+
+            return ctx.message
+
+        commandz = self.commands
+        if ctx.author.id not in self.owner_ids:
+            filtered = await ctx.filter_commands(commandz, sort=True)
+        else:
+            filtered = commandz
+
+        commandz = map(get_name, filtered)
+        matches = tuple(map(self.get_command, get_close_matches(ctx.invoked_with, commandz, 3)))
+        if not matches:
+            return
+
+        embed = NyaEmbed(title="Did you meant?")
+        for x, command in enumerate(matches):
+            embed.add_field(name=f"> **{x + 1}.**", value=codeblock(
+                f"<{command.name}{' ' + command.cog.qualified_name if command.cog else ''}>", "md"))
+
+        message = await ctx.send(embed=embed)
+
+        def check(reaction, member):
+            if reaction.message.id != message.id:
+                return False
+
+            if ctx.author == member:
+                return True
+            else:
+                return False
+
+        reactions = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"]
+
+        for x in range(len(matches)):
+            await message.add_reaction(reactions[x])
+
+        for _ in range(1):
+            try:
+                reaction, member = await self.wait_for('reaction_add', timeout=10, check=check)
+            except asyncio.TimeoutError:
+                await message.delete()
+                return
+
+            await message.delete()
+
+            ind = reactions.index(reaction.emoji)
+
+            new_ctx = await self.get_context(new_com(matches[ind].name), cls=type(ctx))
+            await self.invoke(new_ctx)
 
 class NyaCog(commands.Cog):
     ...

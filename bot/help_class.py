@@ -26,7 +26,7 @@ class Nya_Nya_Help(commands.HelpCommand):
                          description=f"```diff\n- [] = optional argument\n- <> = required argument\n+ for more info use:\n+ {default_prefix}help [category]\n+ {default_prefix}help [command]```",
                          timestamp=datetime.datetime.utcfromtimestamp(time.time()))  # TODO add to cfg.
 
-        embed.set_author(name="Nya Nya", url="https://github.com/VASABIcz",
+        embed.set_author(name="VASABI#3057", url="https://github.com/VASABIcz",
                          icon_url="https://cdn.discordapp.com/avatars/841271270015893535/ccab84cb5b9b3082e874d2c5d8961769.webp?size=1024")
         embed.set_image(
             url='https://cdn.discordapp.com/attachments/856264222949769277/873909151414251560/ezgif-7-a6b34b98c98f.gif')
@@ -53,7 +53,7 @@ class Nya_Nya_Help(commands.HelpCommand):
         embed = NyaEmbed(title=cog.description)
         # description=f"```diff\n- [] = optional argument\n- <> = required argument\n+ for more info use:\n+ {default_prefix}help [category]\n+ {default_prefix}help [command]```")
 
-        embed.set_author(name="Nya Nya", url="https://github.com/VASABIcz",
+        embed.set_author(name="VASABI#3057", url="https://github.com/VASABIcz",
                          icon_url="https://cdn.discordapp.com/avatars/841271270015893535/ccab84cb5b9b3082e874d2c5d8961769.webp?size=1024")
 
         embed.add_field(name=f"**{cog.qualified_name}**", value="\n".join(commands), inline=True)
@@ -67,7 +67,7 @@ class Nya_Nya_Help(commands.HelpCommand):
         embed = NyaEmbed(title=help if len(help) <= 256 else help[:253] + "...")
         # description=f"```diff\n- [] = optional argument\n- <> = required argument\n+ for more info use:\n+ {default_prefix}help [category]\n+ {default_prefix}help [command]```")
 
-        embed.set_author(name="Nya Nya", url="https://github.com/VASABIcz",
+        embed.set_author(name="VASABI#3057", url="https://github.com/VASABIcz",
                          icon_url="https://cdn.discordapp.com/avatars/841271270015893535/ccab84cb5b9b3082e874d2c5d8961769.webp?size=1024")
 
         embed.add_field(name=f"**{default_prefix}{command.qualified_name} {command.signature}**",

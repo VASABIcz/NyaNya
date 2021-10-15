@@ -35,7 +35,7 @@ class NyaNyaContext(commands.Context):
     async def send_exception(self, error):
         embed = NyaEmbed(title="EXCEPTION", description=f"```ini\n[{error}]```")
 
-        await self.send(embed=embed)
+        await self.send(embed=embed, delete_after=60)
 
     async def send_pages(self, data, *args, **kwargs):
         return NyaNyaPages(self, data, *args, **kwargs)
