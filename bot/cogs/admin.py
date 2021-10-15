@@ -228,10 +228,12 @@ class Admin(NyaCog):
         embed.add_field(name="**Guild bans:**", value="\n".join(guild_bans if guild_bans else ("None",)))
         await ctx.send(embed=embed)
 
+    @commands.is_owner()
     @commands.command(name="pagin")
     async def paginator_test(self, ctx: NyaNyaContext, *, data):
         pagin = await ctx.send_pages(data)
 
+    @commands.is_owner()
     @commands.command(name="codetest")
     async def test_conveter(self, ctx: NyaNyaContext, *, data=""):
         code = await CodeConveter().convert(ctx, data)
@@ -244,6 +246,7 @@ class Admin(NyaCog):
 
         await ctx.send(embed=loc_embed(*loc))
 
+    @commands.is_owner()
     @commands.command(name="spotify")
     async def test_spotipy(self, ctx, query):
         xd = await self.bot.extractor(query)

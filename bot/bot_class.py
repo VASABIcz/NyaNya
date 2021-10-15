@@ -28,13 +28,11 @@ class Nya_Nya(commands.AutoShardedBot):
         self.cfg = cfg
         self.session: aiohttp.ClientSession = aiohttp.ClientSession()
         self.start_time = datetime.datetime.now()
-        self.vote = 'https://top.gg'  # TODO top.gg url
-        self.support = 'https://discord.com'  # TODO support server idk
-        self.default_emoji = "❓"
+        self.vote = cfg.VOTE
+        self.support = cfg.SUPPORT
+        self.default_emoji = cfg.DEFAULT_EMOJI
         self.cog_manager = NyaNyaCogs(self, COGS, STATIC_COGS, IGNORED, COG_DIR)
         self.directory = str(Path(__file__).parent)
-        self.voice_states = {}
-
         self.loc = CodeCounter()
         self.loc.count(self.directory)
 
@@ -95,7 +93,6 @@ class Nya_Nya(commands.AutoShardedBot):
         with open("database/db.sql", "r") as f:
             file = f.read()
         await self.pdb.execute(file)
-        # self.db = await aiosqlite.connect(r"D:\backup\python_projects\bot_framework\db\DATABASE")
 
     async def on_ready(self):
         """
@@ -104,6 +101,7 @@ class Nya_Nya(commands.AutoShardedBot):
         self.invite = discord.utils.oauth_url(self.user.id, discord.Permissions(8))  # TODO change permisions etc.
         print(f"[*] LOADED {self.latency * 1000:.2f} ms")
         await self.log_to_db()
+
 
     async def on_connect(self):
         """

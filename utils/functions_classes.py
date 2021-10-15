@@ -6,6 +6,7 @@ import os
 import random
 import time
 from dataclasses import dataclass
+import collections
 
 import async_timeout
 import discord
@@ -170,6 +171,7 @@ class NyaNyaPages:
 
         self.task: asyncio.Task = self.bot.loop.create_task(self.run())
         self.closed = False
+        self.emojis = ["⏪", "◀️", "▶️", "⏩", "🗑️"]
 
     def __exit__(self, exc_language, exc_val, exc_tb):
         self.task.cancel()
@@ -194,11 +196,8 @@ class NyaNyaPages:
         return embed
 
     async def add_rections(self):
-        await self.message.add_reaction("⏪")
-        await self.message.add_reaction("◀️")
-        await self.message.add_reaction("▶️")
-        await self.message.add_reaction("⏩")
-        await self.message.add_reaction("🗑️")
+        for emoji in self.emojis:
+            await self.message.add_reaction(emoji)
 
     def check(self, reaction, member):
         if reaction.message.id != self.message.id:
@@ -404,107 +403,6 @@ class CodeCounter:
                 self.empty += analysis.empty_count
 
 
-# class SongQueue(asyncio.Queue):
-#     def __getitem__(self, item):
-#         if isinstance(item, slice):
-#             return list(itertools.islice(self._queue, item.start, item.stop, item.step))
-#         else:
-#             return self._queue[item]
-#
-#     def __iter__(self):
-#         return self._queue.__iter__()
-#
-#     def __len__(self):
-#         return self.qsize()
-#
-#     def clear(self):
-#         self._queue.clear()
-#
-#     def shuffle(self):
-#         random.shuffle(self._queue)
-#
-#     def remove(self, index: int):
-#         del self._queue[index]
-
-
-# class VoiceState:
-#     def __init__(self, bot, ctx: commands.Context):
-#         self.bot = bot
-#         self._ctx = ctx
-#         self.current = None
-#         self.voice = None
-#         self.next = asyncio.Event()
-#         self.songs = SongQueue()
-#         self._loop = False
-#         self._volume = 0.5
-#         self.audio_player: asyncio.Task = bot.loop.create_task(self.audio_player_task())
-#
-#     def __del__(self):
-#         self.audio_player.cancel()
-#
-#     @property
-#     def loop(self):
-#         return self._loop
-#
-#     @loop.setter
-#     def loop(self, value: bool):
-#         self._loop = value
-#
-#     @property
-#     def volume(self):
-#         return self._volume
-#
-#     @volume.setter
-#     def volume(self, value: float):
-#         self._volume = value
-#
-#     @property
-#     def is_playing(self):
-#         return self.voice and self.current
-#
-#     @property
-#     def alone(self):
-#         return not len(self.voice.channel.members) > 1
-#
-#     async def audio_player_task(self):
-#         while True:
-#             self.next.clear()
-#             if not self.loop:
-#                 try:
-#                     async with timeout(5):
-#                         print("waiting for song")
-#                         self.current = await self.songs.get()
-#                 except asyncio.TimeoutError:
-#                     if self.alone:
-#                         print("stoped")
-#                         self.bot.loop.create_task(self.stop())
-#                         return
-#                     print("someone in voice")
-#             self.current.source.volume = self._volume
-#             self.voice.play(self.current.source, after=self.play_next_song)
-#             await self.current.source.channel.send(embed=self.current.create_embed(), delete_after=60)
-#             await self.next.wait()
-#
-#     def play_next_song(self, error=None):
-#         if error:
-#             raise Exception(error)
-#         self.next.set()
-#
-#     def skip(self):
-#         if self.is_playing:
-#             self.voice.stop()
-#
-#     async def stop(self):
-#         self.songs.clear()
-#         try:
-#             del self.bot.voice_states[self._ctx.guild.id]
-#         except KeyError:
-#             print("prop some desync")  # weird error stops when already stoped
-#         if self.voice:
-#             await self.voice.disconnect()
-#         self.audio_player.cancel()
-
-
 def run_in_executor(f):
     @functools.wraps(f)
     def inner(*args, **kwargs):
@@ -513,12 +411,22 @@ def run_in_executor(f):
 
     return inner
 
+class Que:
+    """This custom queue is specifically made for wavelink so u shouldn't use it anywhere else"""
+    # goals:
+    # async
+    # put, get, consume
+    # noloop, loop, loop1
 
-class NyaNyaQueue(asyncio.Queue):
-    def __init__(self, *args, **kwargs):
-        self.looped = False
+    # TODO rewind like 5 songs
 
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        self._queue = []
+        self._loop = asyncio.get_event_loop()
+        self.loop = 0 # 0 = no loop, 1 = loop one, 2 = loop
+
+        self._getters = collections.deque()
+
 
     def __getitem__(self, item):
         if isinstance(item, slice):
@@ -530,7 +438,16 @@ class NyaNyaQueue(asyncio.Queue):
         return self._queue.__iter__()
 
     def __len__(self):
-        return self.qsize()
+        return len(self._queue)
+
+    @property
+    def loop_emoji(self):
+        if self.loop == 0:
+            return ""
+        elif self.loop == 1:
+            return "🔂"
+        else:
+            return "🔁"
 
     def clear(self):
         self._queue.clear()
@@ -541,12 +458,63 @@ class NyaNyaQueue(asyncio.Queue):
     def remove(self, index: int):
         del self._queue[index]
 
+    def skip_to(self, index):
+        self._queue = self._queue[index:] + self._queue[:index]
+
+    def _put(self, item):
+        self._queue.append(item)
+
+    def _get(self):
+        return self._queue[0]
+
+    def _consume(self):
+        return self._queue.pop(0)
+
+    def empty(self):
+        # faster bool conversion
+        return not self._queue
+
+
+    def _wakeup_next(self, waiters):
+        while waiters:
+            waiter = waiters.popleft()
+            if not waiter.done():
+                waiter.set_result(None)
+                break
+
+
+    async def put(self, item):
+        """Put an item into the queue.
+
+        Put an item into the queue. If the queue is full, wait until a free
+        slot is available before adding item.
+        """
+        return self.put_nowait(item)
+
+
+    def put_nowait(self, item):
+        """Put an item into the queue without blocking.
+
+        If no free slot is immediately available, raise QueueFull.
+        """
+        self._put(item)
+        self._wakeup_next(self._getters)
+
+    def get_nowait(self):
+        """Remove and return an item from the queue.
+
+        Return an item if one is immediately available, else raise QueueEmpty.
+        """
+        if self.empty():
+            raise Exception("random exc in que")
+        return self._get()
+
+
     async def get(self):
         """Remove and return an item from the queue.
 
         If queue is empty, wait until an item is available.
         """
-
         while self.empty():
             getter = self._loop.create_future()
             self._getters.append(getter)
@@ -566,11 +534,17 @@ class NyaNyaQueue(asyncio.Queue):
                     # the call.  Wake up the next in line.
                     self._wakeup_next(self._getters)
                 raise
-        if not self.looped:
-            return self.get_nowait()
-        else:
-            self._queue.append(self._queue.popleft())
-            return self._queue[0]
+
+        return self.get_nowait()
+
+
+    def consume(self):
+        if self.loop == 0:
+            self._consume()
+        elif self.loop == 1:
+            ...
+        elif self.loop == 2:
+            self._put(self._consume())
 
 
 class Player(wavelink.Player):
@@ -579,16 +553,36 @@ class Player(wavelink.Player):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.queue = NyaNyaQueue()
+        self.queue = Que()
 
         self.waiting = False
+        self.ignore = False
 
         # self.teardown_t = self.bot.loop.create_task(self.teardown_task())
+
+    async def do_init(self):
+        if self.is_playing or self.waiting:
+            return
+        try:
+            self.waiting = True
+            with async_timeout.timeout(5 * 60):
+                track = await self.queue.get()
+        except asyncio.TimeoutError:
+            # No music has been played for 5 minutes, cleanup and disconnect...
+            return await self.teardown()
+
+        await self.play(track)
+        self.waiting = False
 
     async def do_next(self) -> None:
         if self.is_playing or self.waiting:
             return
 
+        if not self.ignore:
+            self.queue.consume()
+            print("consumed")
+
+        self.ignore = False
         try:
             self.waiting = True
             with async_timeout.timeout(5 * 60):
@@ -617,10 +611,10 @@ class Player(wavelink.Player):
     def embed(self) -> NyaEmbed:
         track: Track = self.current
 
-        embed = NyaEmbed(title=track.title, description=f"(link)[{track.uri}]")
+        embed = NyaEmbed(title=track.title, description=f"[link]({track.uri})")
         embed.set_image(url=track.thumb)
         embed.set_footer(icon_url=track.requester.avatar_url,
-                         text=f"{track.requester.name} | {'⏸️' if self.paused else '▶️'} | {to_time(self.position / 1000)} / {to_time(track.length / 1000)}")
+                         text=f"{track.requester.name} | {'⏸️' if self.paused else '▶️'} { ' | ' + self.queue.loop_emoji if self.queue.loop_emoji else ''} | {to_time(self.position / 1000)} / {to_time(track.length / 1000)}")
 
         return embed
 
@@ -672,7 +666,8 @@ class Track(wavelink.Track):
         embed = NyaEmbed(title=self.title)
         embed.set_image(url=self.thumb)
         embed.set_footer(icon_url=self.requester.avatar_url,
-                         text=f"{self.requester.name}")
+                         text=f"{self.requester.name} | {to_time(self.length / 1000)}")
+
 
         return embed
 
