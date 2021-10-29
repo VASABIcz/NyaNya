@@ -43,15 +43,6 @@ class NyaNyaContext(commands.Context):
     async def ok(self):
         await self.message.add_reaction("👌")
 
-    # @property
-    # def voice_state(self):
-    #     state = self.bot.voice_states.get(self.guild.id)
-    #     if not state:
-    #         state = VoiceState(self.bot, self)
-    #         self.bot.voice_states[self.guild.id] = state
-#
-    #     return state
-
     async def add_reaction(self, emoji):
         await self.message.add_reaction(emoji)
 

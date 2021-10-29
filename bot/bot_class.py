@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import importlib
 import io
 import traceback
 from difflib import get_close_matches
@@ -12,6 +13,7 @@ import discord
 import spotipy
 from spotipy import SpotifyClientCredentials
 
+import cfg
 from bot.context_class import NyaNyaContext
 from bot.help_class import Nya_Nya_Help
 from utils.constants import COGS, STATIC_COGS, IGNORED, COG_DIR
@@ -40,16 +42,7 @@ class Nya_Nya(commands.AutoShardedBot):
                                                      client_secret=self.cfg.SPOTIFY_SECTRET)
         self.sp = spotipy.Spotify(auth_manager=self.auth_manager)
 
-        try:
-            self.error_webhook = discord.Webhook.from_url(cfg.ERROR_WEBHOOK_URL,
-                                                          adapter=discord.AsyncWebhookAdapter(self.session))
-        except:
-            pass
-        try:
-            self.report_webhook = discord.Webhook.from_url(cfg.REPORT_WEBHOOK_URL,
-                                                           adapter=discord.AsyncWebhookAdapter(self.session))
-        except:
-            pass
+        self.load_webhook()
 
         super().__init__(command_prefix=self._get_prefix,
                          intents=intents(),
@@ -60,17 +53,16 @@ class Nya_Nya(commands.AutoShardedBot):
                          strip_after_prefix=True,
                          help_command=Nya_Nya_Help())
 
-        self.loop.run_until_complete(self.__ainit_())
+        self.loop.run_until_complete(self.__ainit__())
 
         self.tracker = DiscordUtils.InviteTracker(self)
+
+        self.wavelink_reload = False
 
     async def log_to_db(self):
         query = "INSERT INTO guilds(id) VALUES ($1)"
         query2 = "INSERT INTO users(id, name, discriminator) VALUES ($1, $2, $3)"
         query3 = "INSERT INTO users_in_guilds(guild_id, user_id) VALUES ($1, $2)"
-
-        # while True:
-        #     ...
 
         for guild in self.guilds:
             try:
@@ -88,11 +80,28 @@ class Nya_Nya(commands.AutoShardedBot):
                 except asyncpg.UniqueViolationError:
                     pass
 
-    async def __ainit_(self):
+    async def __ainit__(self):
         self.pdb: asyncpg.Pool = await asyncpg.create_pool(**self.cfg.DB_CREDENTIALS)
         with open("database/db.sql", "r") as f:
             file = f.read()
         await self.pdb.execute(file)
+
+    def reload(self):
+        self.cfg = importlib.reload(cfg)
+        self.wavelink_reload = True
+        self.load_webhook()
+
+    def load_webhook(self):
+        try:
+            self.error_webhook = discord.Webhook.from_url(self.cfg.ERROR_WEBHOOK_URL,
+                                                          adapter=discord.AsyncWebhookAdapter(self.session))
+        except:
+            pass
+        try:
+            self.report_webhook = discord.Webhook.from_url(self.cfg.REPORT_WEBHOOK_URL,
+                                                           adapter=discord.AsyncWebhookAdapter(self.session))
+        except:
+            pass
 
     async def on_ready(self):
         """
@@ -125,12 +134,6 @@ class Nya_Nya(commands.AutoShardedBot):
             self.load_extension(f"bot.cogs.{cog}")
 
         super().run(self.cfg.TOKEN)
-
-    # async def setup(self):
-    #     """
-    #     Db con.
-    #     """
-    #     self.pdb: asyncpg.Pool = await asyncpg.create_pool(**self.cfg.DB_CREDENTIALS)
 
     async def get_context(self, message, *, cls=None):
         """

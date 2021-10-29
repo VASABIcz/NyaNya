@@ -1,10 +1,8 @@
 import re
 
-FFMPEG_OPTIONS = {'options': '-vn'}
+EMBED_COLOR = [0x4d0034, 0xEBA2DC, 0xec64a3, 0xc46489]
 
-EMBED_COLOR = 0xEBA2DC  # 0xec64a3
-
-COGS = ["image", "info", "meme", "translator", "utilities", "tarkov", "admin", "listener", "musix"]
+COGS = ["image", "info", "meme", "translator", "utilities", "tarkov", "admin", "listener", "musix", "lolapi"]
 
 STATIC_COGS = ["admin"]
 

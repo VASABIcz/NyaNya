@@ -7,6 +7,7 @@ import os
 import random
 import time
 from dataclasses import dataclass
+from random import choice
 
 import async_timeout
 import discord
@@ -30,7 +31,11 @@ def to_time(time) -> str:
 
 class NyaEmbed(discord.Embed):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs, colour=EMBED_COLOR)
+        if isinstance(EMBED_COLOR, list):
+            col = choice(EMBED_COLOR)
+        else:
+            col = EMBED_COLOR
+        super().__init__(**kwargs, colour=col)
 
 
 class Unbuffered:
@@ -553,29 +558,12 @@ class Player(wavelink.Player):
         self.waiting = False
         self.ignore = False
 
-        # self.teardown_t = self.bot.loop.create_task(self.teardown_task())
-
-    async def do_init(self):
-        if self.is_playing or self.waiting:
-            return
-        try:
-            self.waiting = True
-            with async_timeout.timeout(5 * 60):
-                track = await self.queue.get()
-        except asyncio.TimeoutError:
-            # No music has been played for 5 minutes, cleanup and disconnect...
-            return await self.teardown()
-
-        await self.play(track)
-        self.waiting = False
-
     async def do_next(self) -> None:
         if self.is_playing or self.waiting:
             return
 
         if not self.ignore:
             self.queue.consume()
-            print("consumed")
 
         self.ignore = False
         try:
@@ -589,19 +577,6 @@ class Player(wavelink.Player):
         await self.play(track)
         self.waiting = False
 
-    # def check(self, member, before, after):
-    #     print("check")
-    #     if not self.channel:
-    #         return False
-    #     if len(self.channel.members) == 1:
-    #         return True
-    #     else:
-    #         return False
-    # async def teardown_task(self):
-    #     while True:
-    #         xd = await self.bot.wait_for("voice_state_update", check=self.check)
-    #         print(xd)
-
     @property
     def embed(self) -> NyaEmbed:
         track: Track = self.current
@@ -612,6 +587,7 @@ class Player(wavelink.Player):
                          text=f"{track.requester.name} | {'⏸️' if self.paused else '▶️'} { ' | ' + self.queue.loop_emoji if self.queue.loop_emoji else ''} | {to_time(self.position / 1000)} / {to_time(track.length / 1000)}")
 
         return embed
+
 
     @property
     def channel(self):
@@ -633,11 +609,15 @@ def time_converter(time: str) -> float:
     actual_time = 0
 
     time = time.replace(" ", "").lower()
-
+    try:
+        return float(time)
+    except ValueError:
+        pass
     for t, sec in table.items():
         xd = time.split(t)
         try:
-            actual_time += float(xd[0]) * sec
+            if len(xd) > 1:
+                actual_time += float(xd[0]) * sec
         except ValueError:
             pass
         if len(xd) > 1:

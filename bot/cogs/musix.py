@@ -37,7 +37,6 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                     'metal': wavelink.Equalizer.metal(),
                     'piano': wavelink.Equalizer.piano()}
 
-
     @tasks.loop(seconds=5.0)
     async def start_nodes(self):
         """
@@ -47,7 +46,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         await self.bot.wait_until_ready()
 
         nodes = [n for n in self.bot.wavelink.nodes.values() if n.is_available]
-        if not nodes:
+        if not nodes or self.bot.wavelink_reload:
             if self.bot.wavelink.nodes:
                 previous = self.bot.wavelink.nodes.copy()
                 for node in previous.values():
@@ -56,8 +55,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             for n in self.bot.cfg.NODES.values():
                 await self.bot.wavelink.initiate_node(**n)
 
-
-
+            self.bot.wavelink_reload = False
 
     @run_in_executor
     def extractor(self, URL: str):
@@ -158,12 +156,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                 await player.queue.put(t)
 
         if not player.is_playing:
-            await player.do_init()
+            player.ignore = True
+            await player.do_next()
 
         # send embed to inform everything is done
         await ctx.send(embed=tracks[0][0].embed, delete_after=30)
 
-    @commands.command(name='connect')
+    @commands.command(name='connect', aliases=['join', 'c'])
     async def connect_(self, ctx, *, channel: discord.VoiceChannel = None):
         if not channel:
             try:

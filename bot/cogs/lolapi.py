@@ -1,28 +1,6 @@
-from ast import literal_eval
-
 from bot.bot_class import Nya_Nya, NyaEmbed
 from utils.constants import LOL_REGIONS
 from utils.errors import *
-
-
-def summoner_embed(name, icon, update, flex, solo, level, champs, mains):
-    embed = NyaEmbed(title=name,
-                     description=f"[u.gg](https://u.gg/lol/profile/eun1/{name}/overview) | [op.gg](https://eune.op.gg/summoner/userName={name}) | [leagueofgraphs.com](https://www.leagueofgraphs.com/en/summoner/eune/{name})")
-
-    embed.set_thumbnail(url=f"https://ddragon.leagueoflegends.com/cdn/11.12.1/img/profileicon/{icon}.png")
-    embed.set_footer(text=f"Last update: {update}")
-
-    embed.add_field(name="Solo/Duo", value=flex, inline=True)
-    embed.add_field(name="Flex", value=solo, inline=True)
-    embed.add_field(name="Level", value=level, inline=False)
-    embed.add_field(name="Mains", value=f"{champs} Champs played", inline=False)
-
-    mains = literal_eval(mains)  # Ez clap
-
-    for main in list(mains):
-        embed.add_field(name=main['championId'],
-                        value=f"mastery: {main['championLevel']}\npoints: {main['championPoints']}", inline=False)
-    return embed
 
 
 class Lol(commands.Cog):
@@ -31,6 +9,12 @@ class Lol(commands.Cog):
     def __init__(self, bot: Nya_Nya):
         self.bot = bot
         self.emoji = "🤬"
+        self.bot.loop.create_task(self.__ainit__())
+
+    async def __ainit__(self):
+        async with self.bot.session.get("https://ddragon.leagueoflegends.com/api/versions.json") as r:
+            r = await r.json()
+        self.patch = r[0]
 
     @commands.command()
     async def lolsummoner(self, ctx, summoner, regions=None):
@@ -46,17 +30,11 @@ class Lol(commands.Cog):
                 if response.status == 403:
                     # await ctx.send("DEV IS KINDA CRINGE")
                     raise ExpiredApiKey("DEV IS KINDA CRINGE")
+                elif response.status == 404:  # not found
+                    continue
                 response = await response.json()
-            sid = response['id']
 
-            query = "SELECT name, icon, update, flex, solo, level, champs, mains FROM lolapi where id = $1 and region = $2"
-            data = await self.bot.pdb.fetch(query, sid, region)
-            if data != []:
-                data = data[0]
-                await ctx.send(
-                    embed=summoner_embed(data["name"], data["icon"], data["update"], data["flex"], data["solo"],
-                                         data["level"], data["champs"], data["mains"]))
-                continue
+            sid = response['id']
 
             async with self.bot.session.get(
                     f"https://{region}.api.riotgames.com/lol/league/v4/entries/by-summoner/{sid}?api_key={self.bot.cfg.LOL_API_KEY}") as response1:
@@ -67,7 +45,7 @@ class Lol(commands.Cog):
                 response2 = await response2.json()
 
             async with self.bot.session.get(
-                    f"https://ddragon.leagueoflegends.com/cdn/11.12.1/data/en_US/champion.json") as response3:
+                    f"https://ddragon.leagueoflegends.com/cdn/{self.patch}/data/en_US/champion.json") as response3:
                 response3 = await response3.json()
 
             # VALUES
@@ -77,11 +55,11 @@ class Lol(commands.Cog):
             level = response['summonerLevel']
             icon = response['profileIconId']
             try:
-                solo = response1[0]['tier'] + " " + response[0]['rank']
+                solo = f"{response1[0]['tier']} {response1[0]['rank']}"
             except:
                 solo = "NONE"
             try:
-                flex = response1[1]['tier'] + " " + response[1]['rank']
+                flex = f"{response1[1]['tier']} {response1[1]['rank']}"
             except:
                 flex = "NONE"
             champs = len(response2)
@@ -93,20 +71,24 @@ class Lol(commands.Cog):
                     if int(valuess['key']) == ide:
                         main['championId'] = xd
 
-            connection = await self.bot.pdb.acquire()
-            async with connection.transaction():
-                query = "INSERT INTO lolapi VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
-                query1 = "UPDATE lolapi SET name = $1, level = $2, icon = $3, solo = $4, flex = $5, champs = $6, mains = $7, update = $8, region = $10 WHERE id = $9"
-                try:
-                    await self.bot.pdb.execute(query, sid, name, level, icon, solo, flex, champs, str(mains), update,
-                                               region)
-                except:
-                    await self.bot.pdb.execute(query1, name, level, icon, solo, flex, champs, str(mains), update, sid,
-                                               region)
-            await self.bot.pdb.release(connection)
+            await ctx.send(embed=self.summoner_embed(name, icon, update, flex, solo, level, champs, mains))
 
-            print("????????????")
-            await ctx.send(embed=summoner_embed(name, icon, update, flex, solo, level, champs, mains))
+    def summoner_embed(self, name, icon, update, flex, solo, level, champs, mains):
+        embed = NyaEmbed(title=name,
+                         description=f"[u.gg](https://u.gg/lol/profile/eun1/{name}/overview) | [op.gg](https://eune.op.gg/summoner/userName={name}) | [leagueofgraphs.com](https://www.leagueofgraphs.com/en/summoner/eune/{name})")
+
+        embed.set_thumbnail(url=f"https://ddragon.leagueoflegends.com/cdn/{self.patch}/img/profileicon/{icon}.png")
+        embed.set_footer(text=f"Last update: {update}")
+
+        embed.add_field(name="Solo/Duo", value=flex, inline=True)
+        embed.add_field(name="Flex", value=solo, inline=True)
+        embed.add_field(name="Level", value=level, inline=False)
+        embed.add_field(name="Mains", value=f"{champs} Champs played", inline=False)
+
+        for main in list(mains):
+            embed.add_field(name=main['championId'],
+                            value=f"mastery: {main['championLevel']}\npoints: {main['championPoints']}", inline=False)
+        return embed
 
     # GET puuid
     # https://<region>.api.riotgames.com/lol/summoner/v4/summoners/by-name/<summoner_name>
