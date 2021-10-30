@@ -80,11 +80,12 @@ class Misc(commands.Cog):
         embed = calculator_embed(expresion, result)
         await ctx.send(embed=embed)
 
+    @commands.is_nsfw()
     @commands.command()
     async def screenshot(self, ctx, url):
         """Create image from website."""
         async with self.bot.session.get(
-                f"https://v2.convertapi.com/convert/web/to/png?Secret=Avb55RKO3PkE0MD5&Url={url}&StoreFile=true&ImageWidth=1920&ImageHeight=1080") as response:
+                f"https://v2.convertapi.com/convert/web/to/png?Secret={self.bot.cfg.CONVERT_API}&Url={url}&StoreFile=true&ImageWidth=1920&ImageHeight=1080") as response:
             response = await response.json()
         img = response['Files'][0]['Url']
         embed = NyaEmbed(title="Result")

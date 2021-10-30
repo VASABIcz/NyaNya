@@ -53,7 +53,7 @@ class Nya_Nya(commands.AutoShardedBot):
                          strip_after_prefix=True,
                          help_command=Nya_Nya_Help())
 
-        self.loop.run_until_complete(self.__ainit__())
+        self.loop.create_task(self.__ainit__())
 
         self.tracker = DiscordUtils.InviteTracker(self)
 
@@ -85,6 +85,12 @@ class Nya_Nya(commands.AutoShardedBot):
         with open("database/db.sql", "r") as f:
             file = f.read()
         await self.pdb.execute(file)
+
+        await self.wait_until_ready()
+
+        self.invite = discord.utils.oauth_url(self.user.id, discord.Permissions(8))  # TODO change permisions etc.
+        self.owner_user = self.get_user(self.owner_ids[0])
+        await self.log_to_db()
 
     def reload(self):
         self.cfg = importlib.reload(cfg)
@@ -146,7 +152,9 @@ class Nya_Nya(commands.AutoShardedBot):
         Error handling class.
         """
         if isinstance(error, commands.errors.CheckFailure):
-            ...
+            error = getattr(error, 'original', error)
+            if isinstance(error, commands.errors.NSFWChannelRequired):
+                await ctx.send_exception(error)
 
         elif isinstance(error, commands.errors.MissingRequiredArgument):
             await ctx.send_exception(error)
