@@ -1,6 +1,9 @@
+import aiohttp
+
 from bot.bot_class import Nya_Nya, NyaEmbed
 from utils.constants import LOL_REGIONS
 from utils.errors import *
+from utils.functions_classes import codeblock
 
 
 class Lol(commands.Cog):
@@ -25,14 +28,17 @@ class Lol(commands.Cog):
             regions = [regions]
 
         for region in regions:
-            async with self.bot.session.get(
-                    f"https://{region}.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summoner}?api_key={self.bot.cfg.LOL_API_KEY}") as response:
-                if response.status == 403:
-                    # await ctx.send("DEV IS KINDA CRINGE")
-                    raise ExpiredApiKey("DEV IS KINDA CRINGE")
-                elif response.status == 404:  # not found
-                    continue
-                response = await response.json()
+            try:
+                async with self.bot.session.get(
+                        f"https://{region}.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summoner}?api_key={self.bot.cfg.LOL_API_KEY}") as response:
+                    if response.status == 403:
+                        # await ctx.send("DEV IS KINDA CRINGE")
+                        raise ExpiredApiKey("DEV IS KINDA CRINGE")
+                    elif response.status == 404:  # not found
+                        continue
+                    response = await response.json()
+            except aiohttp.ClientConnectorError:
+                continue
 
             sid = response['id']
 
@@ -71,6 +77,7 @@ class Lol(commands.Cog):
                     if int(valuess['key']) == ide:
                         main['championId'] = xd
 
+
             await ctx.send(embed=self.summoner_embed(name, icon, update, flex, solo, level, champs, mains))
 
     def summoner_embed(self, name, icon, update, flex, solo, level, champs, mains):
@@ -80,14 +87,15 @@ class Lol(commands.Cog):
         embed.set_thumbnail(url=f"https://ddragon.leagueoflegends.com/cdn/{self.patch}/img/profileicon/{icon}.png")
         embed.set_footer(text=f"Last update: {update}")
 
-        embed.add_field(name="Solo/Duo", value=flex, inline=True)
-        embed.add_field(name="Flex", value=solo, inline=True)
-        embed.add_field(name="Level", value=level, inline=False)
-        embed.add_field(name="Mains", value=f"{champs} Champs played", inline=False)
+        embed.add_field(name="Solo/Duo", value=codeblock(flex), inline=True)
+        embed.add_field(name="Flex", value=codeblock(solo), inline=True)
+        embed.add_field(name="Level", value=codeblock(level), inline=False)
+        embed.add_field(name="Mains", value=codeblock(f"{champs} Champs played"), inline=False)
 
         for main in list(mains):
             embed.add_field(name=main['championId'],
-                            value=f"mastery: {main['championLevel']}\npoints: {main['championPoints']}", inline=False)
+                            value=codeblock(f"mastery: {main['championLevel']}\npoints: {main['championPoints']}"),
+                            inline=False)
         return embed
 
     # GET puuid
