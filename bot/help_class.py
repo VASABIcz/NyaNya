@@ -35,8 +35,7 @@ class Nya_Nya_Help(commands.HelpCommand):
                          url="https://github.com/VASABIcz",
                          icon_url=self.bot.owner_user.avatar_url)
         embed.set_image(
-            url='https://cdn.discordapp.com/attachments/797834682476920852/903991686085099550/help_image_transparent.png')
-        # TODO create some sort of reload update
+            url=self.bot.cfg.RESOURCES_URL + "help_image_transparent.png")
         embed.set_footer(text=f"requested by {self.context.author}",
                          icon_url=f"{self.context.author.avatar_url}")
 
