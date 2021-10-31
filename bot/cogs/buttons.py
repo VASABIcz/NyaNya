@@ -8,7 +8,7 @@ from discord_components import *
 
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
-from utils.functions_classes import NyaEmbed
+from bot.utils.functions_classes import NyaEmbed
 
 
 class Games(commands.Cog):

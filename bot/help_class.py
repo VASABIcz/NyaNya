@@ -4,8 +4,8 @@ import time
 
 from discord.ext import commands
 
-from utils.functions_classes import NyaEmbed
-from utils.functions_classes import codeblock
+from bot.utils.embeds import NyaEmbed
+from bot.utils.functions_classes import codeblock
 
 
 class Nya_Nya_Help(commands.HelpCommand):

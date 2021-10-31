@@ -2,6 +2,6 @@
 /.idea/
 cfg.py
 .cache
-/utils/lavalink_server/logs
+/bot/utils/lavalink_server/logs
 data
-/utils/lavalink_server/application.yaml
+/bot/utils/lavalink_server/application.yaml

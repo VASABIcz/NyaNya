@@ -3,7 +3,7 @@ from discord.ext import commands
 
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
-from utils.embeds import info_embed
+from bot.utils.embeds import info_embed
 
 
 class Info(commands.Cog):

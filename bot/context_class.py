@@ -5,8 +5,8 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import CommandError
 
-from utils.embeds import pretty_list
-from utils.functions_classes import NyaNyaPages, Player, NyaEmbed
+from bot.utils.embeds import pretty_list
+from bot.utils.functions_classes import NyaNyaPages, Player, NyaEmbed
 
 
 class NyaNyaContext(commands.Context):

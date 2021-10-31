@@ -1,9 +1,9 @@
 import aiohttp
 
 from bot.bot_class import Nya_Nya, NyaEmbed
-from utils.constants import LOL_REGIONS
-from utils.errors import *
-from utils.functions_classes import codeblock
+from bot.utils.constants import LOL_REGIONS
+from bot.utils.errors import *
+from bot.utils.functions_classes import codeblock
 
 
 class Lol(commands.Cog):

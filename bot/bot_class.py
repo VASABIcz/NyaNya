@@ -16,9 +16,9 @@ from spotipy import SpotifyClientCredentials
 import cfg
 from bot.context_class import NyaNyaContext
 from bot.help_class import Nya_Nya_Help
-from utils.constants import COGS, STATIC_COGS, IGNORED, COG_DIR
-from utils.errors import *
-from utils.functions_classes import intents, NyaNyaCogs, CodeCounter, codeblock, NyaEmbed
+from bot.utils.constants import COGS, STATIC_COGS, IGNORED, COG_DIR
+from bot.utils.errors import *
+from bot.utils.functions_classes import intents, NyaNyaCogs, CodeCounter, codeblock, NyaEmbed
 
 
 class Nya_Nya(commands.AutoShardedBot):

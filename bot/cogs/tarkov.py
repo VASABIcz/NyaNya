@@ -5,8 +5,8 @@ from urllib.parse import unquote
 from discord.ext import commands
 
 from bot.bot_class import Nya_Nya
-from utils.embeds import market_embed, search_embed
-from utils.errors import ItemNotFound
+from bot.utils.embeds import market_embed, search_embed
+from bot.utils.errors import ItemNotFound
 
 
 class Tarkov(commands.Cog):

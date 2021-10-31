@@ -13,8 +13,8 @@ from discord.ext import commands
 
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
-from utils.embeds import calculator_embed
-from utils.functions_classes import NyaEmbed
+from bot.utils.embeds import calculator_embed
+from bot.utils.functions_classes import NyaEmbed
 
 
 class Misc(commands.Cog):

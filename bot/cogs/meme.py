@@ -2,7 +2,7 @@ from discord.ext import commands
 
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
-from utils.embeds import picture_embed
+from bot.utils.embeds import picture_embed
 
 
 class Memes(commands.Cog):
@@ -14,6 +14,7 @@ class Memes(commands.Cog):
         self.bot = bot
         self.emoji = "😂"
 
+    @commands.is_nsfw()
     @commands.command(aliases=['reddit', 'subreddit', 'findmeme'])
     async def fromsubreddit(self, ctx: NyaNyaContext, *, imp: str):
         """

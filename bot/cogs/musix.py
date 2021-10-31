@@ -8,8 +8,8 @@ from discord.ext import tasks
 
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
-from utils.errors import *
-from utils.functions_classes import Track, time_converter, codeblock, run_in_executor, max_len, NyaEmbed
+from bot.utils.errors import *
+from bot.utils.functions_classes import Track, time_converter, codeblock, run_in_executor, max_len, NyaEmbed
 
 URL_REG = re.compile(r'https?://(?:www\.)?.+')
 SPOTIFY_REG = re.compile(r'^(?:https://open\.spotify\.com|spotify)([/:])user\1([^/]+)\1playlist\1([a-z0-9]+)')

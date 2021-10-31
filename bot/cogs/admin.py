@@ -14,8 +14,8 @@ from jishaku.shell import ShellReader
 
 from bot.bot_class import Nya_Nya, NyaCog
 from bot.context_class import NyaNyaContext
-from utils.embeds import std_embed, cogman_embed, loc_embed
-from utils.functions_classes import codeblock, CodeConveter, NyaEmbed
+from bot.utils.embeds import std_embed, cogman_embed, loc_embed
+from bot.utils.functions_classes import codeblock, CodeConveter, NyaEmbed
 
 
 class GlobalChannel(commands.Converter):
@@ -141,7 +141,7 @@ class Admin(NyaCog):
     @commands.command(name="update", hidden=True)
     async def git_update(self, ctx: NyaNyaContext):
         """Simple update command."""
-        proc = await asyncio.create_subprocess_shell(f'git pull', stdout=asyncio.subprocess.PIPE,
+        proc = await asyncio.create_subprocess_shell(f'git pull origin master', stdout=asyncio.subprocess.PIPE,
                                                      stderr=asyncio.subprocess.PIPE)
 
         stdout, stderr = await proc.communicate()
@@ -151,26 +151,26 @@ class Admin(NyaCog):
         if stderr:
             await ctx.send(embed=std_embed("Stderr", stderr.decode()))
 
-        with ShellReader('pip3.9 install -r requirements.txt') as reader:
+        with ShellReader('pip3 install -r requirements.txt') as reader:
             data = ""
             async for line in reader:
                 data += "\n" + line
 
             await ctx.send_pages(data)
 
-        os.execl(sys.executable, 'python3.9', 'main.py', *sys.argv[1:])
+        os.execl(sys.executable, 'python3', 'main.py', *sys.argv[1:])
 
     @commands.is_owner()
     @commands.command(name="restart", hidden=True)
     async def restart(self, ctx: NyaNyaContext):
         """Simple restart command"""
-        os.execl(sys.executable, 'python3.9', 'main.py', *sys.argv[1:])
+        os.execl(sys.executable, 'python3', 'main.py', *sys.argv[1:])
 
     @commands.is_owner()
     @commands.command(name="pull", hidden=True)
-    async def git_pull(self, ctx: NyaNyaContext, branch=""):
+    async def git_pull(self, ctx: NyaNyaContext):
         """Downloads newest bot version"""
-        proc = await asyncio.create_subprocess_shell(f'git pull {branch}', stdout=asyncio.subprocess.PIPE,
+        proc = await asyncio.create_subprocess_shell('git pull origin master', stdout=asyncio.subprocess.PIPE,
                                                      stderr=asyncio.subprocess.PIPE)
 
         stdout, stderr = await proc.communicate()
@@ -180,7 +180,7 @@ class Admin(NyaCog):
         if stderr:
             await ctx.send(embed=std_embed("Stderr", stderr.decode()))
 
-        with ShellReader('pip3.9 install -r requirements.txt') as reader:
+        with ShellReader('pip3 install -r requirements.txt') as reader:
             data = ""
             async for line in reader:
                 data += "\n" + line

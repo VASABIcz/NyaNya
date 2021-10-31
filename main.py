@@ -5,7 +5,7 @@ import sys
 
 import cfg
 from bot.bot_class import Nya_Nya
-from utils.functions_classes import Unbuffered
+from bot.utils.functions_classes import Unbuffered
 
 try:
     import uvloop
