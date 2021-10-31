@@ -1,7 +1,8 @@
-## Default prefix is:
+[![github](https://img.shields.io/badge/github-Nya_Nya-blue)](https://github.com/VASABIcz/NyaNya)
+
+### Default prefix is:
 
 - nya.
-
 - custom prefix
 
 ### 📰updates📰
@@ -24,12 +25,6 @@
 
 ```css
 [19] commands
-```
-
-### 👨‍💻Jishaku👨‍💻
-
-```css
-[1] commands
 ```
 
 ### 💻Admin💻
@@ -67,3 +62,7 @@
 ```css
 [11] commands
 ```
+
+###  
+
+![Nya Nya](https://raw.githubusercontent.com/VASABIcz/NyaNya/master/resources/help_image_transparent.png)
