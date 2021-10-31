@@ -4,8 +4,6 @@ services:
     volumes:
       - ./data/lavalink:/opt/Lavalink/logs
     command: java -jar Lavalink.jar
-    # expose:
-    #   - "2333"
   db:
     image: postgres
     volumes:
@@ -14,6 +12,8 @@ services:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432"
   bot:
     build: .
     depends_on:
