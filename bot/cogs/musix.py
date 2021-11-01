@@ -316,7 +316,6 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         if not nodes:
             await ctx.send("Our audio sending sever isn't available at the moment")
             return False
-
         return True
 
 

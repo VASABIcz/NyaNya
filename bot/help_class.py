@@ -18,7 +18,7 @@ class Nya_Nya_Help(commands.HelpCommand):
         self.no_info = options.pop("no_info", "No information provided.")
         ...  # too lazy to add more functionality
 
-        super().__init__(**options)
+        super().__init__(verify_checks=False, **options)
 
     @property
     def bot(self):
