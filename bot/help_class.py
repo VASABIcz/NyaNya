@@ -18,7 +18,7 @@ class Nya_Nya_Help(commands.HelpCommand):
         self.no_info = options.pop("no_info", "No information provided.")
         ...  # too lazy to add more functionality
 
-        super().__init__(verify_checks=False, **options)
+        super().__init__(**options)
 
     @property
     def bot(self):
@@ -98,7 +98,7 @@ class Nya_Nya_Help(commands.HelpCommand):
                     return f"**{default_emoji}{cog.qualified_name}{default_emoji}**"
 
         if self.context.author.id not in self.bot.owner_ids:
-            filtered = await self.filter_commands(self.bot.commands, sort=True, key=get_category)
+            filtered = self.filter_commands(self.bot.commands, sort=True, key=get_category)
         else:
             filtered = sorted(self.bot.commands, key=get_category)
         to_iterate = itertools.groupby(filtered, key=get_category)
@@ -111,7 +111,7 @@ class Nya_Nya_Help(commands.HelpCommand):
 
     async def send_cog_help(self, cog):
         if self.context.author.id not in self.bot.owner_ids:
-            filtered = await self.filter_commands(cog.get_commands(), sort=True)
+            filtered = self.filter_commands(cog.get_commands(), sort=True)
         else:
             filtered = cog.get_commands()
 
@@ -124,3 +124,11 @@ class Nya_Nya_Help(commands.HelpCommand):
             raise commands.CommandNotFound(f"Command {command.qualified_name} is not found")
 
         await self.context.send(embed=self.command_help(command))
+
+    def filter_commands(self, commands, *, sort=False, key=None):
+        if sort and key is None:
+            key = lambda c: c.name
+
+        iterator = commands if self.show_hidden else filter(lambda c: not c.hidden, commands)
+
+        return sorted(iterator, key=key) if sort else list(iterator)

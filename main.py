@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.9
 
 import asyncio
+import os
 import sys
 
 import cfg
@@ -13,6 +14,8 @@ try:
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 except ImportError:
     pass  # it looks like ur on windows no speedy asyncio for u m8
+
+os.environ["JISHAKU_HIDE"] = "true"  # hides jishaku from help
 
 
 def main():
