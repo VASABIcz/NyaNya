@@ -1,6 +1,5 @@
 #!/usr/bin/env python3.9
 
-import asyncio
 import os
 import sys
 
@@ -8,12 +7,10 @@ import cfg
 from bot.bot_class import Nya_Nya
 from bot.utils.functions_classes import Unbuffered
 
-try:
+if os.name != "nt":
     import uvloop
 
-    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-except ImportError:
-    pass  # it looks like ur on windows no speedy asyncio for u m8
+    uvloop.install()
 
 os.environ["JISHAKU_HIDE"] = "true"  # hides jishaku from help
 
