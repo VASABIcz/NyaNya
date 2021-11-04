@@ -470,7 +470,10 @@ class Que:
         self._queue.clear()
 
     def shuffle(self):
-        random.shuffle(self._queue)
+        x1 = self._queue.pop(0)
+        shuffle(self._queue)
+        self._queue.insert(0, x1)
+
 
     def remove(self, index: int):
         del self._queue[index]
