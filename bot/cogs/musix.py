@@ -118,7 +118,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
         return prepared
 
-
+    @commands.is_nsfw()
     @commands.command(aliases=['p'])
     async def play(self, ctx: NyaNyaContext, *, query: str):
         """play a song"""
@@ -277,6 +277,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         """Seek to time in '1h 1m 1s 1ms' format"""
         await ctx.player.seek(int(time * 1000))
 
+    @commands.is_nsfw()
     @commands.command(aliases=['np', 'cp', 'nowplaying'])
     async def now_playing(self, ctx: NyaNyaContext):
         if ctx.player.is_playing:
@@ -284,6 +285,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         else:
             raise NothingPlaying
 
+    @commands.is_nsfw()
     @commands.command()
     async def queue(self, ctx: NyaNyaContext, page: int = 1):
         qlen = len(ctx.player.queue)
