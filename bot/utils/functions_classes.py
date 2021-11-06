@@ -4,7 +4,7 @@ import functools
 import itertools
 import json
 import os
-import random
+import random as r
 import time
 from dataclasses import dataclass
 from random import choice
@@ -471,7 +471,7 @@ class Que:
 
     def shuffle(self):
         x1 = self._queue.pop(0)
-        shuffle(self._queue)
+        r.shuffle(self._queue)
         self._queue.insert(0, x1)
 
 
