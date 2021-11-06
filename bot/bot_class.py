@@ -82,6 +82,12 @@ class Nya_Nya(commands.AutoShardedBot):
             file = f.read()
         await self.pdb.execute(file)
 
+        # !!! disgusting way of doing it, but im to stupid :D
+        async def dis(ctx):
+            self.dispatch("after_invoke", ctx)
+
+        self._after_invoke = dis
+
         await self.wait_until_ready()
 
         self.invite = discord.utils.oauth_url(self.user.id, discord.Permissions(8))  # TODO change permisions etc.
@@ -112,7 +118,6 @@ class Nya_Nya(commands.AutoShardedBot):
         self.invite = discord.utils.oauth_url(self.user.id, discord.Permissions(8))  # TODO change permisions etc.
         print(f"[*] LOADED {self.latency * 1000:.2f} ms")
         await self.log_to_db()
-
 
     async def on_connect(self):
         """
