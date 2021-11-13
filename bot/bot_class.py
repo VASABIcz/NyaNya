@@ -1,5 +1,5 @@
 import datetime
-import importlib
+import logging
 from pathlib import Path
 
 import DiscordUtils
@@ -9,12 +9,24 @@ import discord
 import spotipy
 from spotipy import SpotifyClientCredentials
 
-import cfg
+import database.setup as dbs
 from bot.context_class import NyaNyaContext
 from bot.help_class import Nya_Nya_Help
 from bot.utils.constants import COGS, STATIC_COGS, IGNORED, COG_DIR
 from bot.utils.errors import *
 from bot.utils.functions_classes import intents, NyaNyaCogs, CodeCounter
+
+log = logging.getLogger(__name__)
+
+
+def encod(inter):
+    table = {"0": "a", "1": "b", "2": "c", "3": "d", "4": "e", "5": "f", "6": "g", "7": "h", "8": "i", "9": "j"}
+    s = ""
+
+    for i in str(inter):
+        s += table[i]
+
+    return s
 
 
 class Nya_Nya(commands.AutoShardedBot):
@@ -32,7 +44,7 @@ class Nya_Nya(commands.AutoShardedBot):
         self.cog_manager = NyaNyaCogs(self, COGS, STATIC_COGS, IGNORED, COG_DIR)
         self.directory = str(Path(__file__).parent)
         self.loc = CodeCounter()
-        self.loc.count(self.directory)
+        # self.loc.count(self.directory)
 
         self.auth_manager = SpotifyClientCredentials(client_id=self.cfg.SPOTIFY_ID,
                                                      client_secret=self.cfg.SPOTIFY_SECTRET)
@@ -42,7 +54,8 @@ class Nya_Nya(commands.AutoShardedBot):
 
         super().__init__(command_prefix=self._get_prefix,
                          intents=intents(),
-                         activity=discord.Game(name=f"{self.cfg.MAIN_PREFIX}help"),
+                         activity=self.cfg.ACTIVITY if hasattr(self.cfg, 'ACTIVITY') else discord.Game(
+                             name=f"{self.cfg.MAIN_PREFIX}help"),
                          description="IT JUST WORKS\nwell it doesn\'t,... STFU please",
                          owner_ids=self.cfg.OWNERS,
                          case_insensitive=True,
@@ -78,26 +91,30 @@ class Nya_Nya(commands.AutoShardedBot):
 
     async def __ainit__(self):
         self.pdb: asyncpg.Pool = await asyncpg.create_pool(**self.cfg.DB_CREDENTIALS)
-        with open("database/db.sql", "r") as f:
-            file = f.read()
-        await self.pdb.execute(file)
+
+        await self.pdb.execute(dbs.GLOBAL)  # execute initial db query
+
+        # TODO in future add this functionalyty to reaction menu
 
         # !!! disgusting way of doing it, but im to stupid :D
-        async def dis(ctx):
+        async def bok(ctx):
             self.dispatch("after_invoke", ctx)
 
-        self._after_invoke = dis
+        self._after_invoke = bok
 
         await self.wait_until_ready()
+        self.instance_name = encod(self.user.id)
+        await self.pdb.execute(
+            dbs.INSTANCE.format(id=self.instance_name))  # execute bot specific query (prefixes etc. )
 
         self.invite = discord.utils.oauth_url(self.user.id, discord.Permissions(8))  # TODO change permisions etc.
         self.owner_user = self.get_user(self.owner_ids[0])
         await self.log_to_db()
 
-    def reload(self):
-        self.cfg = importlib.reload(cfg)
-        self.wavelink_reload = True
-        self.load_webhook()
+    # def reload(self):
+    #     self.cfg = importlib.reload(cfg)
+    #     self.wavelink_reload = True
+    #     self.load_webhook()
 
     def load_webhook(self):
         try:
@@ -115,7 +132,6 @@ class Nya_Nya(commands.AutoShardedBot):
         """
         Bot is ready to run.
         """
-        self.invite = discord.utils.oauth_url(self.user.id, discord.Permissions(8))  # TODO change permisions etc.
         print(f"[*] LOADED {self.latency * 1000:.2f} ms")
         await self.log_to_db()
 
@@ -129,7 +145,7 @@ class Nya_Nya(commands.AutoShardedBot):
         if before != after:  # prevents double invocation ex.: (when u send spotify url it edits message and adds custom embed)
             await self.process_commands(after)
 
-    def run(self):
+    async def run(self):
         """
         Run bot.
         """
@@ -140,7 +156,8 @@ class Nya_Nya(commands.AutoShardedBot):
         for cog in COGS:
             self.load_extension(f"bot.cogs.{cog}")
 
-        super().run(self.cfg.TOKEN)
+        # super().run(self.cfg.TOKEN)
+        await self.start(self.cfg.TOKEN)
 
     async def get_context(self, message, *, cls=None):
         """
@@ -153,16 +170,10 @@ class Nya_Nya(commands.AutoShardedBot):
         """
         Check if user is blacklisted.
         """
-        bans = [x[0] for x in await self.pdb.fetch("SELECT id FROM users where banned = true")]
-        user = ctx.author.id in bans
+        bans = [x[0] for x in await self.pdb.fetch(
+            "SELECT id FROM users where banned = true UNION SELECT id FROM guilds where banned = true")]
 
-        if ctx.guild:
-            bans2 = [x[0] for x in await self.pdb.fetch("SELECT id FROM guilds where banned = true")]
-            guild = ctx.guild.id in bans2
-        else:
-            guild = False
-
-        if (user or guild) and not ctx.author.id in self.owner_ids:
+        if ctx.author.id in bans and not ctx.author.id in self.owner_ids:
             return False
         else:
             return True
@@ -173,7 +184,9 @@ class Nya_Nya(commands.AutoShardedBot):
         """
         if msg.guild:
             guild_prefixes = (x[0] for x in
-                              await self.pdb.fetch("SELECT prefix FROM prefixes where guild_id = $1", msg.guild.id) if
+                              await self.pdb.fetch(
+                                  f"SELECT prefix FROM {bot.instance_name}prefixes where guild_id = $1", msg.guild.id)
+                              if
                               x is not None)
         else:
             guild_prefixes = ()
