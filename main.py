@@ -1,7 +1,9 @@
 #!/usr/bin/env python3.9
-
+import asyncio
 import os
 import sys
+
+import discord
 
 import cfg
 from bot.bot_class import Nya_Nya
@@ -15,18 +17,34 @@ if os.name != "nt":
 os.environ["JISHAKU_HIDE"] = "true"  # hides jishaku from help
 
 
-def main():
-    """
-    Run the bot.
-    """
-    # no need for sleep task will ensure that we connect
-    # logging.basicConfig(level=logging.DEBUG)
+class BotInstance:
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.loop = asyncio.get_event_loop()
+        self.closed = False
+        self.loop.create_task(self.__ainit__())
+
+    async def __ainit__(self):
+        while not self.closed:
+            # bc = importlib.reload(bot_class)
+            # self.cls = bc.Nya_Nya
+
+            bot = Nya_Nya(self.cfg)
+
+            await bot.run()
+
+
+async def main():
     sys.stdout, sys.stderr, sys.stdin = Unbuffered(sys.stdout), Unbuffered(sys.stderr), Unbuffered(sys.stdin)
 
-    bot = Nya_Nya(cfg)
+    for n, instance in enumerate(cfg.INSTANCES):
+        instance.ACTIVITY = discord.Game(name=f"{instance.MAIN_PREFIX}help\ninstance num. {n + 1}")
+        BotInstance(instance)
 
-    bot.run()
+    print("setup done")
+
+    await asyncio.Future()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
