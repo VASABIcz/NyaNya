@@ -1,4 +1,4 @@
-create table if not exists guilds
+GLOBAL = """create table if not exists guilds
 (
     id         bigint                               not null
         constraint guilds_pk
@@ -16,14 +16,6 @@ create table if not exists guilds_log
     time  timestamp default CURRENT_TIMESTAMP not null,
     type  text,
     value text
-);
-
-create table if not exists prefixes
-(
-    guild_id bigint       not null,
-    prefix   varchar(255) not null,
-    constraint prefixes_pk
-        primary key (guild_id, prefix)
 );
 
 create table if not exists updates
@@ -89,3 +81,13 @@ create table if not exists users_log
         primary key (id, time)
 );
 
+"""
+
+INSTANCE = """
+create table if not exists {id}prefixes
+(
+    guild_id bigint       not null,
+    prefix   varchar(255) not null,
+    primary key (guild_id, prefix)
+);
+"""
