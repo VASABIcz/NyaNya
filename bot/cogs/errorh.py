@@ -68,7 +68,8 @@ class ErrorHandler(commands.Cog):
                                   traceback.TracebackException(type(error), error, error.__traceback__).format(
                                       chain=True)]).replace("``", "`\u200b`")
             try:
-                await self.bot.error_webhook.send(f'{error}\nIgnoring exception in command {ctx.command}:')
+                await self.bot.error_webhook.send(
+                    f'ERROR by: {self.bot.user.name}({self.bot.user.id})\n{error}\nIgnoring exception in command {ctx.command}:')
                 await self.bot.error_webhook.send(file=discord.File(io.StringIO(error_text), filename="error.py"))
             except:
                 raise error
