@@ -1,9 +1,9 @@
 import re
+from itertools import cycle
 
-EMBED_COLOR = [0x4d0034, 0xEBA2DC, 0xec64a3, 0xc46489]
+EMBED_COLOR = cycle([0x4d0034, 0xEBA2DC, 0xec64a3, 0xc46489])
 
-COGS = ["image", "info", "meme", "translator", "utilities", "tarkov", "admin", "listener", "musix", "lolapi", "errorh",
-        "stats"]
+COGS = ["info", "meme", "utilities", "tarkov", "admin", "listener", "musix", "lolapi", "errorh", "stats"]
 
 STATIC_COGS = ["admin", "errorh"]
 
