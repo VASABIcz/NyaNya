@@ -9,7 +9,7 @@ from discord.ext import tasks
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
 from bot.utils.errors import *
-from bot.utils.functions_classes import Track, time_converter, codeblock, run_in_executor, max_len, NyaEmbed
+from bot.utils.functions_classes import Track, time_converter, codeblock, run_in_executor, max_len, NyaEmbed, Player
 
 URL_REG = re.compile(r'https?://(?:www\.)?.+')
 SPOTIFY_REG = re.compile(r'^(?:https://open\.spotify\.com|spotify)([/:])user\1([^/]+)\1playlist\1([a-z0-9]+)')
@@ -118,15 +118,36 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
         return prepared
 
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, m, b, a):
+        # FOR LIKE 6th time
+        # plz work
+        # this should handle users manually moving, disconnecting bot and handle those events
+
+        if m == self.bot.user:  # only handle bot
+            if b.channel != a.channel:  # only handle if bot changes channel ignore mutes etc.
+                if b.channel and a.channel:
+                    p = self.bot.wavelink.get_player(guild_id=m.guild.id, cls=Player)
+                    await p.magic_pause()
+                    # move (resume playing)
+                elif b.channel and not a.channel:
+                    p = self.bot.wavelink.get_player(guild_id=m.guild.id, cls=Player)
+                    await p.teardown()
+                    # disconnect (temrinate player)
+                elif not b.channel and a.channel:
+                    ...
+                    # connect (nothing) cant happen manually
+
     @commands.is_nsfw()
     @commands.command(aliases=['p'])
     async def play(self, ctx: NyaNyaContext, *, query: str):
         """play a song"""
 
-        player = ctx.player # player for current guild
+        player = ctx.player  # player for current guild
+        node = self.bot.wavelink.get_best_node()
 
         async def resolve_tracks(query) -> list[Track] or None:
-            track = await self.bot.wavelink.get_best_node().get_tracks(query)
+            track = await node.get_tracks(query)
 
             if track is None:
                 await ctx.send('No songs were found with that query. Please try again.', delete_after=15)
