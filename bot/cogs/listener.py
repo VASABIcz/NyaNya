@@ -28,10 +28,10 @@ class Listener(commands.Cog):
         except asyncpg.UniqueViolationError:
             await self.bot.pdb.execute(query1, member.guild.id, member.id)
 
-        inviter = await self.bot.tracker.fetch_inviter(member)
-        if inviter:
-            print(inviter)
-            await self.bot.report_webhook.send(f"{inviter} invited {member.display_name}")
+        # inviter = await self.bot.tracker.fetch_inviter(member)
+        # if inviter:
+        #     print(inviter)
+        #     await self.bot.report_webhook.send(f"{inviter} invited {member.display_name}")
 
     @commands.Cog.listener("on_member_remove")
     async def log_member_leave(self, member):
