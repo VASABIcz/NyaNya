@@ -7,7 +7,6 @@ import os
 import random as r
 import time
 from dataclasses import dataclass
-from random import choice
 
 import async_timeout
 import discord
@@ -31,8 +30,8 @@ def to_time(time) -> str:
 
 class NyaEmbed(discord.Embed):
     def __init__(self, **kwargs):
-        if isinstance(EMBED_COLOR, list):
-            col = choice(EMBED_COLOR)
+        if getattr(EMBED_COLOR, "__iter__"):
+            col = next(EMBED_COLOR)
         else:
             col = EMBED_COLOR
         super().__init__(**kwargs, colour=col)
@@ -494,9 +493,10 @@ class Que:
         return self._queue[0]
 
     def _consume(self):
-        item = self._queue.pop(0)
-        self._old.put(item)
-        return item
+        if self._queue:
+            item = self._queue.pop(0)
+            self._old.put(item)
+            return item
 
     def empty(self):
         return not self._queue
@@ -547,7 +547,8 @@ class Que:
         elif self.loop == 1:
             ...
         elif self.loop == 2:
-            self._put(self._queue.pop(0))
+            if self._queue:
+                self._put(self._queue.pop(0))
 
 
 class Player(wavelink.Player):
@@ -563,6 +564,7 @@ class Player(wavelink.Player):
 
     async def do_next(self) -> None:
         if self.is_playing or self.waiting:
+            self.ignore = False
             return
 
         if not self.ignore:
@@ -591,7 +593,6 @@ class Player(wavelink.Player):
 
         return embed
 
-
     @property
     def channel(self):
         return self.bot.get_channel(self.channel_id)
@@ -600,11 +601,24 @@ class Player(wavelink.Player):
     def guild(self):
         return self.bot.get_guild(self.guild_id)
 
+    async def move(self, ch_id, self_deaf=False):
+        self.channel_id = ch_id
+
     async def teardown(self):
         try:
             await self.destroy()
         except KeyError:
             pass
+
+    async def connect(self, channel_id: int, self_deaf: bool = False):
+        await super().connect(channel_id, self_deaf)
+
+    async def magic_pause(self, pause=0.3):
+        # this pause will magically make bot play again after moving to new channel
+        await asyncio.sleep(pause)
+        await self.set_pause(True)
+        await asyncio.sleep(pause)
+        await self.set_pause(False)
 
 
 def time_converter(time: str) -> float:
