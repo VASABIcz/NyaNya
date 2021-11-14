@@ -18,3 +18,5 @@ qrcode~=7.3.1
 textdistance~=4.2.1
 aioredis~=2.0.0
 motor~=2.5.1
+redisearch~=2.0.0
+pymongo~=3.12.1

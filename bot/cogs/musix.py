@@ -7,6 +7,7 @@ from urllib.parse import quote
 import discord
 import wavelink
 from discord.ext import tasks
+from redisearch import Client, IndexDefinition, TextField
 from wavelink.backoff import ExponentialBackoff
 
 from bot.bot_class import Nya_Nya
@@ -23,16 +24,40 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         self.emoji = "🎶"
         self.music_cache = self.bot.mongo_client.production.music_cache
 
+        self.redis_cache = Client("music_cache", host="redis")
+
+        SCHEMA = (
+            TextField("query", weight=5.0),
+        )
+
+        definition = IndexDefinition(prefix=['track:'])
+
+        try:
+            self.redis_cache.info()
+        except:
+            self.redis_cache.create_index(SCHEMA, definition=definition)
+
         if not hasattr(bot, "wavelink"):
             self.bot.wavelink = wavelink.Client(bot=bot, session=self.bot.session)
         self.wavelink = self.bot.wavelink
 
         self.start_nodes.start()
 
-        self.eqs = {'flat':  wavelink.Equalizer.flat(),
+        self.eqs = {'flat': wavelink.Equalizer.flat(),
                     'boost': wavelink.Equalizer.boost(),
                     'metal': wavelink.Equalizer.metal(),
                     'piano': wavelink.Equalizer.piano()}
+
+    def redis_add(self, query):
+        try:
+            self.redis_cache.add_document(f"track:{query}", query=query)
+        except:
+            pass
+
+    # def redis_search(self, query, limit=10) -> list:
+    #     q = Query(query).paging(0, limit)
+    #     r = self.redis_cache.search(q)
+    #     return r.docs
 
     @tasks.loop(seconds=5.0)
     async def start_nodes(self):
@@ -137,8 +162,13 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         node = self.wavelink.get_best_node()
         backoff = ExponentialBackoff(base=1)
 
+        if URL_REG.match(query):
+            prepared = query
+        else:
+            prepared = f"ytsearch:{query}"
+
         for attempt in range(5):
-            async with self.bot.session.get(f'{node.rest_uri}/loadtracks?identifier={quote(query)}',
+            async with self.bot.session.get(f'{node.rest_uri}/loadtracks?identifier={quote(prepared)}',
                                             headers={'Authorization': node.password}) as resp:
 
                 if not resp.status == 200 and retry_on_failure:
@@ -156,17 +186,31 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                     continue  # most of the time it returns none bcs overload so we try again
 
                 if data['playlistInfo']:
-                    await self.from_track_dict(query, data['tracks'], playlist=True)
+                    await self.cache_data(query, data['tracks'], playlist=True)
                     return [Track(track['track'], track['info'], requester=ctx.author) for track in data['tracks']]
                 else:
-                    await self.from_track_dict(query, data['tracks'],
-                                               playlist=False)  # we cache all results for better performane in future
+                    await self.cache_data(query, data['tracks'],
+                                          playlist=False)  # we cache all results for better performane in future
                     return [Track(data['tracks'][0]['track'], data['tracks'][0]['info'],
                                   requester=ctx.author)]  # we want to return oly one result and thats the most acurate
 
-    async def from_track_dict(self, query: str, tracks: list[dict], playlist=True):
+    async def cache_data(self, query: str, tracks: list[dict], playlist=True):
+        """
+        Cache data
+        """
+        for t in tracks:
+            try:
+                self.redis_add(t['info']['title'])
+            except:
+                pass
+        try:
+            self.redis_add(query)
+        except:
+            pass
+
         t = [{'query': t['info']['title'], 'meta': [{'id': t['track'], 'data': t['info']}]} for t in
              tracks]  # track by its name
+
         if playlist:
             t.append(
                 {'query': query,
@@ -178,13 +222,19 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         for tt in t:
             await self.music_cache.update_one({'query': tt['query']}, {'$set': tt}, upsert=True)
 
-    async def from_data(self, query: str) -> list[dict] or None:
+    async def query_data(self, query: str) -> list[dict] or None:
+        """
+        Retrieve Tracks from cache
+        """
         d = await self.music_cache.find_one({'query': query})  # find 100% match
         if d:
             return d['meta']
         else:
             # find best possible match
             res = await self.music_cache.find({"$text": {"$search": query}}).to_list(length=10)
+
+            # res = self.redis_search(query)
+            print(res)
             if not res:
                 return
             best = get_close_matches(query, [x['query'] for x in res], 1)
@@ -195,18 +245,17 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                     return r['meta']
 
     async def query_tracks(self, query: str, ctx: NyaNyaContext, cache=True) -> list[Track] or None:
+        """
+        Retrieve Tracks from cache or fetch them.
+        """
         if cache:
-            track = await self.from_data(query)
+            track = await self.query_data(query)
             if track:
                 print("cached")
                 return [Track(track['id'], track['data'], requester=ctx.author) for track in track]
 
-        if URL_REG.match(query):
-            prepared = query
-        else:
-            prepared = f"ytsearch:{query}"
-
-        res = await self.custom_query(ctx, prepared)
+        print("fetched")
+        res = await self.custom_query(ctx, query)
         if not res:
             await ctx.send('No songs were found with that query. Please try again.', delete_after=15)
 
