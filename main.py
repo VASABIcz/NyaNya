@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.9
 import asyncio
+import logging
 import os
 import sys
 
@@ -35,6 +36,7 @@ class BotInstance:
 
 
 async def main():
+    logging.basicConfig(level=logging.INFO)
     sys.stdout, sys.stderr, sys.stdin = Unbuffered(sys.stdout), Unbuffered(sys.stderr), Unbuffered(sys.stdin)
 
     for n, instance in enumerate(cfg.INSTANCES):
