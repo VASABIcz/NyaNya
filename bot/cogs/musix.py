@@ -1,13 +1,12 @@
 import asyncio
 import re
 from difflib import get_close_matches
-from math import floor
+from math import floor, ceil
 from urllib.parse import quote
 
 import discord
 import wavelink
 from discord.ext import tasks
-from redisearch import Client, IndexDefinition, TextField
 from wavelink.backoff import ExponentialBackoff
 
 from bot.bot_class import Nya_Nya
@@ -24,19 +23,6 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         self.emoji = "🎶"
         self.music_cache = self.bot.mongo_client.production.music_cache
 
-        self.redis_cache = Client("music_cache", host="redis")
-
-        SCHEMA = (
-            TextField("query", weight=5.0),
-        )
-
-        definition = IndexDefinition(prefix=['track:'])
-
-        try:
-            self.redis_cache.info()
-        except:
-            self.redis_cache.create_index(SCHEMA, definition=definition)
-
         if not hasattr(bot, "wavelink"):
             self.bot.wavelink = wavelink.Client(bot=bot, session=self.bot.session)
         self.wavelink = self.bot.wavelink
@@ -47,17 +33,6 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                     'boost': wavelink.Equalizer.boost(),
                     'metal': wavelink.Equalizer.metal(),
                     'piano': wavelink.Equalizer.piano()}
-
-    def redis_add(self, query):
-        try:
-            self.redis_cache.add_document(f"track:{query}", query=query)
-        except:
-            pass
-
-    # def redis_search(self, query, limit=10) -> list:
-    #     q = Query(query).paging(0, limit)
-    #     r = self.redis_cache.search(q)
-    #     return r.docs
 
     @tasks.loop(seconds=5.0)
     async def start_nodes(self):
@@ -79,69 +54,17 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
             self.bot.wavelink_reload = False
 
-    @run_in_executor
-    def extractor(self, URL: str):
-        songs = []
-        if "https://open.spotify.com/playlist" in URL:
-            try:
-                yes = self.bot.sp.playlist(URL)
-                items = yes['tracks']['items']
-            except:
-                raise Exception(f"{URL} is an invalid spotify url.")
-            songs.extend(f"{item['track']['name']} {item['track']['artists'][0]['name']}" for item in items)
-            nor = yes['tracks']
-            for x in range(int((yes['tracks']['total'] - 1) / 100)):
-                nor = self.bot.sp.next(nor)
-                songs.extend(f"{item['track']['name']} {item['track']['artists'][0]['name']}" for item in nor['items'])
-
-        elif "https://open.spotify.com/album" in URL:
-            try:
-                yes = self.bot.sp.album(URL)
-                items = yes['tracks']['items']
-            except:
-                raise Exception(f"{URL} is an invalid spotify url.")
-            songs.extend(f"{item['name']} {item['artists'][0]['name']}" for item in items)
-            nor = yes['tracks']
-            for x in range(int((yes['tracks']['total'] - 1) / 100)):
-                nor = self.bot.sp.next(nor)
-                songs.extend(f"{item['track']['name']} {item['track']['artists'][0]['name']}" for item in nor['items'])
-
-        elif "https://open.spotify.com/track" in URL:
-            try:
-                yes = self.bot.sp.track(URL)
-            except:
-                raise Exception(f"{URL} is an invalid spotify url.")
-            songs.append(yes['name'])
-        else:
-            return [URL]
-
-        return songs
-
-
     @wavelink.WavelinkMixin.listener('on_track_stuck')
     @wavelink.WavelinkMixin.listener('on_track_end')
     @wavelink.WavelinkMixin.listener('on_track_exception')
     async def on_player_stop(self, node: wavelink.Node, payload):
         await payload.player.do_next()
 
-    async def prepare_input(self, query):
-        """
-        Parses input to list of Lavalink compatible links.
-        Currently supports youtube and spotify.
-        """
-        query = query.strip('<>')  # handle no embed link
-        if 'https://open.spotify.com/' in query:
-            prepared = await self.extractor(query)
-        else:
-            prepared = [query]
-
-        return prepared
-
     @commands.Cog.listener()
     async def on_voice_state_update(self, m, b, a):
         # FOR LIKE 6th time
         # plz work
-        # this should handle users manually moving, disconnecting bot and handle those events
+        # this should handle users manually moving, disconnecting bot
 
         if m == self.bot.user:  # only handle bot
             if b.channel != a.channel:  # only handle if bot changes channel ignore mutes etc.
@@ -157,7 +80,43 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                     ...
                     # connect (nothing) cant happen manually
 
-    async def custom_query(self, ctx, query, retry_on_failure=True) -> list[Track] or None:
+    @run_in_executor
+    def extractor(self, URL: str):
+        try:
+            if "https://open.spotify.com/track" in URL:
+                track = self.bot.sp.track(URL)
+                return [f"{track['name']} {track['artists'][0]['name']}"]
+            elif "https://open.spotify.com/playlist" in URL or "https://open.spotify.com/album" in URL:
+                songs = []
+                if "https://open.spotify.com/album" in URL:
+                    res = self.bot.sp.album(URL)
+                else:
+                    res = self.bot.sp.playlist(URL)
+                tracks = res['tracks']
+
+                for _ in range(ceil((res['tracks']['total']) / 100)):
+                    songs.extend(
+                        f"{item['track']['name']} {item['track']['artists'][0]['name']}" for item in tracks['items'])
+                    tracks = self.bot.sp.next(tracks)
+
+                return songs
+        except:
+            raise BadSpotify(f"{URL} is an invalid spotify url.")
+
+    async def prepare_input(self, query):
+        """
+        Parses query to list of queries
+        Currently supports youtube and spotify.
+        """
+        query = query.strip('<>')  # handle no embed link
+        if 'https://open.spotify.com/' in query:
+            prepared = await self.extractor(query)
+        else:
+            prepared = [query]
+
+        return prepared
+
+    async def fetch_track(self, ctx, query, retry_on_failure=True) -> list[Track] or None:
         """Custom implementation of wavelink.get_track()"""
         node = self.wavelink.get_best_node()
         backoff = ExponentialBackoff(base=1)
@@ -198,16 +157,6 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         """
         Cache data
         """
-        for t in tracks:
-            try:
-                self.redis_add(t['info']['title'])
-            except:
-                pass
-        try:
-            self.redis_add(query)
-        except:
-            pass
-
         t = [{'query': t['info']['title'], 'meta': [{'id': t['track'], 'data': t['info']}]} for t in
              tracks]  # track by its name
 
@@ -232,8 +181,6 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         else:
             # find best possible match
             res = await self.music_cache.find({"$text": {"$search": query}}).to_list(length=10)
-
-            # res = self.redis_search(query)
             print(res)
             if not res:
                 return
@@ -255,7 +202,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                 return [Track(track['id'], track['data'], requester=ctx.author) for track in track]
 
         print("fetched")
-        res = await self.custom_query(ctx, query)
+        res = await self.fetch_track(ctx, query)
         if not res:
             await ctx.send('No songs were found with that query. Please try again.', delete_after=15)
 
