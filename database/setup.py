@@ -84,7 +84,7 @@ create table if not exists users_log
 """
 
 INSTANCE = """
-create table if not exists {id}prefixes
+create table if not exists {id}_prefixes
 (
     guild_id bigint       not null,
     prefix   varchar(255) not null,
