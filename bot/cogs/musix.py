@@ -133,6 +133,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                     # connect (nothing) cant happen manually
 
     async def custom_query(self, ctx, query, retry_on_failure=True) -> list[Track] or None:
+        """Custom implementation of wavelink.get_track()"""
         node = self.wavelink.get_best_node()
         backoff = ExponentialBackoff(base=1)
 
@@ -162,17 +163,6 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                                                playlist=False)  # we cache all results for better performane in future
                     return [Track(data['tracks'][0]['track'], data['tracks'][0]['info'],
                                   requester=ctx.author)]  # we want to return oly one result and thats the most acurate
-
-    async def from_track(self, query: str, tracks: list, playlist=True):
-        t = [{'query': t.title, 'meta': [{'id': t.id, 'data': t.info}]} for t in tracks]  # track by its name
-        if playlist:
-            t.append(
-                {'query': query, 'meta': [{'id': t.id, 'data': t.info} for t in tracks]})  # query and all its tracks
-        else:
-            t.append({'query': query, 'meta': [{'id': tracks[0].id, 'data': tracks[0].info}]})  # or one if not playlist
-
-        for tt in t:
-            await self.music_cache.update_one({'query': tt['query']}, {'$set': tt}, upsert=True)
 
     async def from_track_dict(self, query: str, tracks: list[dict], playlist=True):
         t = [{'query': t['info']['title'], 'meta': [{'id': t['track'], 'data': t['info']}]} for t in
@@ -221,18 +211,10 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             await ctx.send('No songs were found with that query. Please try again.', delete_after=15)
 
         return res
-        # track = await self.bot.wavelink.get_tracks(prepared, retry_on_failure=True)
-        # print("fetched")
-        # if isinstance(track, wavelink.TrackPlaylist): # playlist
-        #    await self.from_track(query, track.tracks) # cache to db
-        #    return [Track(track.id, track.info, requester=ctx.author) for track in track.tracks] # parse to custom track object
-        # elif isinstance(track, list): # list of posibilities
-        #    await self.from_track(query, track, playlist=False)
-        #    return [Track(track[0].id, track[0].info, requester=ctx.author)] # We ignore other results cause we need just the most accurate
 
     async def _play(self, ctx: NyaNyaContext, query: str, cache=True):
         # method that represents play command
-        # better than having 2 instances of yhe same code
+        # better than having 2 instances of the same code
 
         player = ctx.player  # player for current guild
         prepared = await self.prepare_input(query)
