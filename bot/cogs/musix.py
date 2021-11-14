@@ -2,10 +2,12 @@ import asyncio
 import re
 from difflib import get_close_matches
 from math import floor
+from urllib.parse import quote
 
 import discord
 import wavelink
 from discord.ext import tasks
+from wavelink.backoff import ExponentialBackoff
 
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
@@ -15,14 +17,6 @@ from bot.utils.functions_classes import Track, time_converter, codeblock, run_in
 URL_REG = re.compile(r'https?://(?:www\.)?.+')
 SPOTIFY_REG = re.compile(r'^(?:https://open\.spotify\.com|spotify)([/:])user\1([^/]+)\1playlist\1([a-z0-9]+)')
 
-
-class NyaControler:
-    """
-    Responsive embed for music.
-    """
-    ...
-
-
 class Music(commands.Cog, wavelink.WavelinkMixin):
     def __init__(self, bot: Nya_Nya):
         self.bot = bot
@@ -31,6 +25,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
         if not hasattr(bot, "wavelink"):
             self.bot.wavelink = wavelink.Client(bot=bot, session=self.bot.session)
+        self.wavelink = self.bot.wavelink
 
         self.start_nodes.start()
 
@@ -110,11 +105,8 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         Currently supports youtube and spotify.
         """
         query = query.strip('<>')  # handle no embed link
-        if not URL_REG.match(query):
-            prepared = [f'ytsearch:{query}']
-        elif 'https://open.spotify.com/' in query:
+        if 'https://open.spotify.com/' in query:
             prepared = await self.extractor(query)
-            prepared = list(map(lambda v: f'ytsearch:{v}', prepared))
         else:
             prepared = [query]
 
@@ -140,101 +132,122 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                     ...
                     # connect (nothing) cant happen manually
 
-    async def from_track(self, query, tracks, playlist=True):
+    async def custom_query(self, ctx, query, retry_on_failure=True) -> list[Track] or None:
+        node = self.wavelink.get_best_node()
+        backoff = ExponentialBackoff(base=1)
+
+        for attempt in range(5):
+            async with self.bot.session.get(f'{node.rest_uri}/loadtracks?identifier={quote(query)}',
+                                            headers={'Authorization': node.password}) as resp:
+
+                if not resp.status == 200 and retry_on_failure:
+                    retry = backoff.delay()
+
+                    await asyncio.sleep(retry)
+                    continue
+
+                elif not resp.status == 200 and not retry_on_failure:
+                    return
+
+                data = await resp.json()
+
+                if not data['tracks']:
+                    continue  # most of the time it returns none bcs overload so we try again
+
+                if data['playlistInfo']:
+                    await self.from_track_dict(query, data['tracks'], playlist=True)
+                    return [Track(track['track'], track['info'], requester=ctx.author) for track in data['tracks']]
+                else:
+                    await self.from_track_dict(query, data['tracks'],
+                                               playlist=False)  # we cache all results for better performane in future
+                    return [Track(data['tracks'][0]['track'], data['tracks'][0]['info'],
+                                  requester=ctx.author)]  # we want to return oly one result and thats the most acurate
+
+    async def from_track(self, query: str, tracks: list, playlist=True):
         t = [{'query': t.title, 'meta': [{'id': t.id, 'data': t.info}]} for t in tracks]  # track by its name
         if playlist:
             t.append(
                 {'query': query, 'meta': [{'id': t.id, 'data': t.info} for t in tracks]})  # query and all its tracks
         else:
-            t.append({'query': query, 'meta': [{'id': tracks[0].id, 'data': tracks[0].info}]})
+            t.append({'query': query, 'meta': [{'id': tracks[0].id, 'data': tracks[0].info}]})  # or one if not playlist
 
         for tt in t:
-            # try:
-            #     # todo update cache
-            #     await self.music_cache.insert_one(tt)
-            # except:
-            #     ...
-            print(tt)
             await self.music_cache.update_one({'query': tt['query']}, {'$set': tt}, upsert=True)
 
-    async def from_data(self, query) -> list or None:
+    async def from_track_dict(self, query: str, tracks: list[dict], playlist=True):
+        t = [{'query': t['info']['title'], 'meta': [{'id': t['track'], 'data': t['info']}]} for t in
+             tracks]  # track by its name
+        if playlist:
+            t.append(
+                {'query': query,
+                 'meta': [{'id': t['track'], 'data': t['info']} for t in tracks]})  # query and all its tracks
+        else:
+            t.append({'query': query,
+                      'meta': [{'id': tracks[0]['track'], 'data': tracks[0]['info']}]})  # or one if not playlist
+
+        for tt in t:
+            await self.music_cache.update_one({'query': tt['query']}, {'$set': tt}, upsert=True)
+
+    async def from_data(self, query: str) -> list[dict] or None:
         d = await self.music_cache.find_one({'query': query})  # find 100% match
         if d:
             return d['meta']
         else:
             # find best possible match
-            cur = self.music_cache.find({"$text": {"$search": query}})
-            res = await cur.to_list(length=10)
+            res = await self.music_cache.find({"$text": {"$search": query}}).to_list(length=10)
             if not res:
                 return
-            print(res)
             best = get_close_matches(query, [x['query'] for x in res], 1)
-            print(best)
             if not best:
                 return
             for r in res:
                 if r['query'] == best[0]:
                     return r['meta']
 
-        return
-
-    async def query_tracks(self, query: str, cache=True):
-        stp = query[9:] if query.startswith("ytsearch:") else query
-
+    async def query_tracks(self, query: str, ctx: NyaNyaContext, cache=True) -> list[Track] or None:
         if cache:
-            track = await self.from_data(stp)
+            track = await self.from_data(query)
             if track:
                 print("cached")
-                return track
+                return [Track(track['id'], track['data'], requester=ctx.author) for track in track]
 
-        print(stp)
-        track = await self.bot.wavelink.get_tracks(query, retry_on_failure=True)
-        print("WTH")
-
-        if isinstance(track, wavelink.TrackPlaylist):
-            await self.from_track(stp, track.tracks)
+        if URL_REG.match(query):
+            prepared = query
         else:
-            await self.from_track(stp, track, playlist=False)
+            prepared = f"ytsearch:{query}"
 
-        print(track)
-        return track
+        res = await self.custom_query(ctx, prepared)
+        if not res:
+            await ctx.send('No songs were found with that query. Please try again.', delete_after=15)
 
-    @commands.is_nsfw()
-    @commands.command(aliases=['p'])
-    async def play(self, ctx: NyaNyaContext, *, query: str):
-        """play a song"""
+        return res
+        # track = await self.bot.wavelink.get_tracks(prepared, retry_on_failure=True)
+        # print("fetched")
+        # if isinstance(track, wavelink.TrackPlaylist): # playlist
+        #    await self.from_track(query, track.tracks) # cache to db
+        #    return [Track(track.id, track.info, requester=ctx.author) for track in track.tracks] # parse to custom track object
+        # elif isinstance(track, list): # list of posibilities
+        #    await self.from_track(query, track, playlist=False)
+        #    return [Track(track[0].id, track[0].info, requester=ctx.author)] # We ignore other results cause we need just the most accurate
 
-        async def resolve_tracks(query) -> list[Track] or None:
-            track = await self.query_tracks(query)
-
-            if track is None:
-                await ctx.send('No songs were found with that query. Please try again.', delete_after=15)
-                return
-
-            if isinstance(track, wavelink.TrackPlaylist):
-                return [Track(track.id, track.info, requester=ctx.author) for track in track.tracks]
-            else:
-                if isinstance(track[0], dict):
-                    return [Track(track['id'], track['data'], requester=ctx.author) for track in track]
-                else:
-                    track = track[0]
-                    return [Track(track.id, track.info, requester=ctx.author)]
+    async def _play(self, ctx: NyaNyaContext, query: str, cache=True):
+        # method that represents play command
+        # better than having 2 instances of yhe same code
 
         player = ctx.player  # player for current guild
-
         prepared = await self.prepare_input(query)
 
         if len(prepared) > 100:
             await ctx.send("This query may take a while")
 
-        n = 12  # split to chunks
-        final = [prepared[i * n:(i + 1) * n] for i in range((
-                                                                        len(prepared) + n - 1) // n)]  # big brain moment split insane amount of songs to smaller chunks to not blow up ur server :) # the more you know
-        procesed = []
-        # TODO maybe add suport for spliting load acros nodes hmmm
+        n = 8  # split to chunks
+        final = [prepared[i * n:(i + 1) * n] for i in range((len(prepared) + n - 1) // n)]
+        # big brain moment split insane amount of songs to smaller chunks to not blow up ur server :) # the more you know
 
+        procesed = []
         for tracks in final:
-            procesed.extend(await asyncio.gather(*[resolve_tracks(query) for query in tracks]))  # search for songs
+            procesed.extend(
+                await asyncio.gather(*[self.query_tracks(query, ctx, cache) for query in tracks]))  # search for songs
 
         # add all results to queue
         # and start playing
@@ -249,62 +262,21 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             player.ignore = True
             await player.do_next()
 
-        # send embed to inform everything is done
+        # send embed
         await ctx.send(embed=procesed[0][0].embed, delete_after=30)
+
+    @commands.is_nsfw()
+    @commands.command(aliases=['p'])
+    async def play(self, ctx: NyaNyaContext, *, query: str):
+        """play a song"""
+        await self._play(ctx, query)
 
     @commands.cooldown(4, 60, commands.BucketType.user)
     @commands.is_nsfw()
     @commands.command(aliases=['pr'])
     async def playr(self, ctx: NyaNyaContext, *, query: str):
         """Plays without using internal cache may take longer time to load but will retrieve the best results"""
-
-        async def resolve_tracks(query) -> list[Track] or None:
-            track = await self.query_tracks(query, False)
-
-            if track is None:
-                await ctx.send('No songs were found with that query. Please try again.', delete_after=15)
-                return
-
-            if isinstance(track, wavelink.TrackPlaylist):
-                return [Track(track.id, track.info, requester=ctx.author) for track in track.tracks]
-            else:
-                if isinstance(track[0], dict):
-                    return [Track(track['id'], track['data'], requester=ctx.author) for track in track]
-                else:
-                    track = track[0]
-                    return [Track(track.id, track.info, requester=ctx.author)]
-
-        player = ctx.player  # player for current guild
-
-        prepared = await self.prepare_input(query)
-
-        if len(prepared) > 100:
-            await ctx.send("This query may take a while")
-
-        n = 12  # split to chunks
-        final = [prepared[i * n:(i + 1) * n] for i in range((
-                                                                        len(prepared) + n - 1) // n)]  # big brain moment split insane amount of songs to smaller chunks to not blow up ur server :) # the more you know
-        procesed = []
-        # TODO maybe add suport for spliting load acros nodes hmmm
-
-        for tracks in final:
-            procesed.extend(await asyncio.gather(*[resolve_tracks(query) for query in tracks]))  # search for songs
-
-        # add all results to queue
-        # and start playing
-        for track in procesed:
-            if not track:
-                pass
-
-            for t in track:
-                await player.queue.put(t)
-
-        if not player.is_playing:
-            player.ignore = True
-            await player.do_next()
-
-        # send embed to inform everything is done
-        await ctx.send(embed=procesed[0][0].embed, delete_after=30)
+        await self._play(ctx, query, cache=False)
 
     @commands.command(name='connect', aliases=['join', 'c'])
     async def connect_(self, ctx, *, channel: discord.VoiceChannel = None):
