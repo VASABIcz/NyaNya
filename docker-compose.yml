@@ -34,8 +34,3 @@ services:
       - mongo
     restart: always
     command: python3 main.py
-  redis:
-    image: redislabs/redisearch:latest
-    restart: always
-    ports:
-      - "6379:6379"
