@@ -37,7 +37,7 @@ class Misc(commands.Cog):
         await self.bot.pdb.fetch("SELECT 1")
         post = time.time() - t
         t = time.time()
-        await self.bot.mongo_music.find_one({})
+        await self.bot.mongo_client.production.music_cache.find_one({})
         mongo = time.time() - t
 
         embed = NyaEmbed(title="average latency")
