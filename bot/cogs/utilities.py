@@ -34,10 +34,18 @@ class Misc(commands.Cog):
         Show bot and database latency.
         """
         t = time.time()
-        query = "SELECT 1"
-        await self.bot.pdb.fetch(query)
-        tit = time.time() - t
-        await ctx.message.reply(f"API `{self.bot.latency * 1000:.2f}` ms\nDB `{tit * 1000:.2f}` ms")
+        await self.bot.pdb.fetch("SELECT 1")
+        post = time.time() - t
+        t = time.time()
+        await self.bot.mongo_music.find_one({})
+        mongo = time.time() - t
+
+        embed = NyaEmbed(title="average latency")
+        embed.add_field(name="Discord API", value=f"```{self.bot.latency * 1000:.2f}ms```")
+        embed.add_field(name="mongoDB", value=f"```{post * 1000:.2f}ms```")
+        embed.add_field(name="postgresql", value=f"```{mongo * 1000:.2f}ms```")
+
+        await ctx.send(embed=embed)
 
     @commands.guild_only()
     @commands.command(name="setprefix", aliases=['addprefix', 'apefix', 'newprefix'])
@@ -45,7 +53,7 @@ class Misc(commands.Cog):
         """
         Add a custom guild prefix.
         """
-        query = "INSERT INTO prefixes(guild_id, prefix) VALUES ($1, $2)"
+        query = f"INSERT INTO {self.bot.instance_name}_prefixes(guild_id, prefix) VALUES ($1, $2)"
         try:
             await self.bot.pdb.execute(query, ctx.guild.id, prefix)
         except asyncpg.UniqueViolationError:
@@ -59,7 +67,7 @@ class Misc(commands.Cog):
         """
         Remvoe a guild prefix.
         """
-        query = "DELETE FROM prefixes WHERE prefix = $1 and guild_id = $2"
+        query = f"DELETE FROM {self.bot.instance_name}_prefixes WHERE prefix = $1 and guild_id = $2"
         await self.bot.pdb.execute(query, prefix, ctx.guild.id)
         await ctx.ok()
 
@@ -69,7 +77,7 @@ class Misc(commands.Cog):
         """
         Show a prefixe's for your guild.
         """
-        query = "SELECT prefix FROM prefixes where guild_id = $1"
+        query = f"SELECT prefix FROM {self.bot.instance_name}_prefixes where guild_id = $1"
         prefixes = [x[0] for x in await self.bot.pdb.fetch(query, ctx.guild.id)]
         await ctx.send_list(prefixes, "Prefixes")
 
