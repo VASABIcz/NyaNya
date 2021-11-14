@@ -6,6 +6,7 @@ import DiscordUtils
 import aiohttp
 import asyncpg
 import discord
+import motor.motor_asyncio
 import spotipy
 from spotipy import SpotifyClientCredentials
 
@@ -61,6 +62,10 @@ class Nya_Nya(commands.AutoShardedBot):
                          case_insensitive=True,
                          strip_after_prefix=True,
                          help_command=Nya_Nya_Help())
+
+        self.mongo_client = motor.motor_asyncio.AsyncIOMotorClient(self.cfg.MONGO)
+        self.mongo = self.mongo_client.production
+        self.mongo_music = self.mongo.music_cache
 
         self.loop.create_task(self.__ainit__())
 
@@ -185,7 +190,7 @@ class Nya_Nya(commands.AutoShardedBot):
         if msg.guild:
             guild_prefixes = (x[0] for x in
                               await self.pdb.fetch(
-                                  f"SELECT prefix FROM {bot.instance_name}prefixes where guild_id = $1", msg.guild.id)
+                                  f"SELECT prefix FROM {bot.instance_name}_prefixes where guild_id = $1", msg.guild.id)
                               if
                               x is not None)
         else:
