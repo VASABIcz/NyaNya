@@ -7,7 +7,7 @@ from bot.utils.embeds import info_embed
 
 
 class Info(commands.Cog):
-    """utility extincion"""
+    """utility extension"""
 
     def __init__(self, bot: Nya_Nya):
         self.bot = bot

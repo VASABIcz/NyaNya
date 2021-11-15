@@ -202,16 +202,9 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                 return [Track(track['id'], track['data'], requester=ctx.author) for track in track]
 
         print("fetched")
-        res = await self.fetch_track(ctx, query)
-        if not res:
-            await ctx.send('No songs were found with that query. Please try again.', delete_after=15)
-
-        return res
+        return await self.fetch_track(ctx, query)
 
     async def _play(self, ctx: NyaNyaContext, query: str, cache=True):
-        # method that represents play command
-        # better than having 2 instances of the same code
-
         player = ctx.player  # player for current guild
         prepared = await self.prepare_input(query)
 
@@ -219,19 +212,20 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             await ctx.send("This query may take a while")
 
         n = 8  # split to chunks
-        final = [prepared[i * n:(i + 1) * n] for i in range((len(prepared) + n - 1) // n)]
-        # big brain moment split insane amount of songs to smaller chunks to not blow up ur server :) # the more you know
+        chunks = [prepared[i * n:(i + 1) * n] for i in range((len(prepared) + n - 1) // n)]
 
-        procesed = []
-        for tracks in final:
-            procesed.extend(
+        processed: [[Track] or None] = []
+        for tracks in chunks:
+            processed.extend(
                 await asyncio.gather(*[self.query_tracks(query, ctx, cache) for query in tracks]))  # search for songs
 
+        if None in processed:
+            await ctx.send("Some of the tracks couldn't be found")
+
         # add all results to queue
-        # and start playing
-        for track in procesed:
+        for track in processed:
             if not track:
-                pass
+                continue
 
             for t in track:
                 await player.queue.put(t)
@@ -240,8 +234,8 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             player.ignore = True
             await player.do_next()
 
-        # send embed
-        await ctx.send(embed=procesed[0][0].embed, delete_after=30)
+        if not processed[0] == None:
+            await ctx.send(embed=processed[0][0].embed, delete_after=30)
 
     @commands.is_nsfw()
     @commands.command(aliases=['p'])
@@ -287,6 +281,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
     @commands.command()
     async def revert(self, ctx: NyaNyaContext):
+        """revert finished song"""
         ctx.player.queue.revert()
         ctx.player.ignore = True
         await ctx.player.stop()
@@ -374,7 +369,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
     @commands.is_nsfw()
     @commands.command(aliases=['np', 'cp', 'nowplaying'])
-    async def now_playing(self, ctx: NyaNyaContext):
+    async def playing(self, ctx: NyaNyaContext):
         if ctx.player.is_playing:
             await ctx.send(embed=ctx.player.embed)
         else:

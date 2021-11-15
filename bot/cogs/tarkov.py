@@ -10,6 +10,7 @@ from bot.utils.errors import ItemNotFound
 
 
 class Tarkov(commands.Cog):
+    """simple API for https://tarkov-market.com"""
     def __init__(self, bot: Nya_Nya):
         self.emoji = "🔫"
         self.bot = bot
@@ -22,12 +23,12 @@ class Tarkov(commands.Cog):
 
     @commands.command(name="market", aliases=["m"])
     async def get_item(self, ctx, *, query):
-        """Gets price and info about tarkov market."""
+        """Gets price and info about tarkov item."""
         await ctx.send(embed=market_embed(await self.api_get(query)))
 
     @commands.command(name="marketsearch", aliases=["ms"])
     async def search_market(self, ctx, *, query):
-        """Gets price and info about tarkov market."""
+        """Gets price and info about multiple tarkov items."""
         await ctx.send(embed=search_embed(await self.api_get(query, limit=10)))
 
     async def api_get(self, query: str, limit=1):

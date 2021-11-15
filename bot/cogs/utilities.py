@@ -13,7 +13,7 @@ from discord.ext import commands
 
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
-from bot.utils.embeds import calculator_embed
+from bot.utils.embeds import calculator_embed, loc_embed
 from bot.utils.functions_classes import NyaEmbed
 
 
@@ -46,6 +46,12 @@ class Misc(commands.Cog):
         embed.add_field(name="postgresql", value=f"```{mongo * 1000:.2f}ms```")
 
         await ctx.send(embed=embed)
+
+    @commands.command(name="linesofcode", aliases=["loc"])
+    async def linesofcode(self, ctx: NyaNyaContext):
+        loc = list(self.bot.loc)
+
+        await ctx.send(embed=loc_embed(*loc))
 
     @commands.guild_only()
     @commands.command(name="setprefix", aliases=['addprefix', 'apefix', 'newprefix'])

@@ -14,7 +14,7 @@ from jishaku.shell import ShellReader
 
 from bot.bot_class import Nya_Nya, NyaCog
 from bot.context_class import NyaNyaContext
-from bot.utils.embeds import std_embed, cogman_embed, loc_embed
+from bot.utils.embeds import std_embed, cogman_embed
 from bot.utils.functions_classes import codeblock, CodeConveter, NyaEmbed
 
 
@@ -229,31 +229,14 @@ class Admin(NyaCog):
         await ctx.send(embed=embed)
 
     @commands.is_owner()
-    @commands.command(name="pagin")
-    async def paginator_test(self, ctx: NyaNyaContext, *, data):
-        pagin = await ctx.send_pages(data)
-
-    @commands.is_owner()
-    @commands.command(name="codetest")
+    @commands.command(name="codetest", hidden=True)
     async def test_conveter(self, ctx: NyaNyaContext, *, data=""):
         code = await CodeConveter().convert(ctx, data)
 
         await ctx.send_pages(code.text, cb_language=code.language)
 
-    @commands.command(name="linesofcode", aliases=["loc"])
-    async def linesofcode(self, ctx: NyaNyaContext):
-        loc = list(self.bot.loc)
-
-        await ctx.send(embed=loc_embed(*loc))
-
     @commands.is_owner()
-    @commands.command(name="spotify")
-    async def test_spotipy(self, ctx, query):
-        xd = await self.bot.extractor(query)
-
-        await ctx.send_pages(xd, cb_language="json")
-
-    @commands.command(name="query")
+    @commands.command(name="query", hidden=True)
     async def cust_conv(self, ctx: NyaNyaContext, query):
         # cache = ctx.guild._state.member_cache_flags.joined#
         # members = await ctx.guild.query_members(argument, limit=100, cache=cache)
@@ -279,7 +262,7 @@ class Admin(NyaCog):
         await self.bot.invoke(new_ctx)
 
     @commands.is_owner()
-    @commands.command()
+    @commands.command(hidden=True)
     async def testemb(self, ctx: NyaNyaContext, *, e):
         embed = NyaEmbed(title=e)
         await ctx.send(embed=embed)
