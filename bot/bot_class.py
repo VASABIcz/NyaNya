@@ -145,7 +145,7 @@ class Nya_Nya(commands.AutoShardedBot):
         print("[*] CONNECTED")
 
     async def on_message_edit(self, before, after):
-        if before != after:  # prevents double invocation ex.: (when u send spotify url it edits message and adds custom embed)
+        if before.content != after.content:  # prevents double invocation ex.: (when u send spotify url it edits message and adds embed)
             await self.process_commands(after)
 
     async def run(self):
