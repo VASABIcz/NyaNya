@@ -45,11 +45,16 @@ class Nya_Nya_Help(commands.HelpCommand):
         embed.add_field(name='🙋Support🙋', value=f'> [here]({self.bot.support})\n\u200b', inline=True)
 
         for cog in cogs:
-            embed.add_field(name=f"**{cog[0]}**", value=f"```ini\n[{cog[1]}] commands```", inline=True)
+            if cog[0]:
+                embed.add_field(name=f"**{cog[0]}**", value=f"```ini\n[{cog[1]}] commands```", inline=True)
 
-        for _ in range(3 - (len(cogs) % 3)):  # add invisible field to bottom for better look
+        for _ in range(3 - ((len(cogs) - 1) % 3)):  # add invisible field to bottom for better look
             embed.add_field(name=f"\u200b", value=f"\u200b", inline=True)
 
+        # TODO better implement no category command removal
+        # just cleanup whole help class
+        # this is very bad implementation
+        # but my help class is one big mess so this will do for now
         return embed
 
     def cog_help(self, cog, commands):
@@ -90,7 +95,7 @@ class Nya_Nya_Help(commands.HelpCommand):
             cog = command.cog
             default_emoji = self.bot.default_emoji
             if cog is None:
-                return f"**{default_emoji}{self.no_category}{default_emoji}**"
+                return ""
             else:
                 if hasattr(cog, "emoji"):
                     return f"**{cog.emoji}{cog.qualified_name}{cog.emoji}**"
