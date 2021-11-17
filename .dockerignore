@@ -1,2 +1,13 @@
 venv
 data
+.github
+README.md
+eee.py
+docker-compose.yml
+resources
+lavalink_server
+dddd
+Dockerfile
+.idea
+.dockerignore
+.gitignore
