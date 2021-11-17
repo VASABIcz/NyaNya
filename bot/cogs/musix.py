@@ -145,15 +145,15 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                     continue  # most of the time it returns none bcs overload so we try again
 
                 if data['playlistInfo']:
-                    await self.cache_data(query, data['tracks'], playlist=True)
+                    await self.store_tracks(query, data['tracks'], playlist=True)
                     return [Track(track['track'], track['info'], requester=ctx.author) for track in data['tracks']]
                 else:
-                    await self.cache_data(query, data['tracks'],
-                                          playlist=False)  # we cache all results for better performane in future
+                    await self.store_tracks(query, data['tracks'],
+                                            playlist=False)  # we cache all results for better performane in future
                     return [Track(data['tracks'][0]['track'], data['tracks'][0]['info'],
                                   requester=ctx.author)]  # we want to return oly one result and thats the most acurate
 
-    async def cache_data(self, query: str, tracks: list[dict], playlist=True):
+    async def store_tracks(self, query: str, tracks: list[dict], playlist=True):
         """
         Cache data
         """
@@ -171,7 +171,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         for tt in t:
             await self.music_cache.update_one({'query': tt['query']}, {'$set': tt}, upsert=True)
 
-    async def query_data(self, query: str) -> list[dict] or None:
+    async def load_tracks(self, query: str) -> list[dict] or None:
         """
         Retrieve Tracks from cache
         """
@@ -181,7 +181,6 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         else:
             # find best possible match
             res = await self.music_cache.find({"$text": {"$search": query}}).to_list(length=10)
-            print(res)
             if not res:
                 return
             best = get_close_matches(query, [x['query'] for x in res], 1)
@@ -191,64 +190,70 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                 if r['query'] == best[0]:
                     return r['meta']
 
-    async def query_tracks(self, query: str, ctx: NyaNyaContext, cache=True) -> list[Track] or None:
+    async def get_data(self, query: str, ctx: NyaNyaContext):
         """
-        Retrieve Tracks from cache or fetch them.
+        Retrieve Tracks from cache.
         """
-        if cache:
-            track = await self.query_data(query)
-            if track:
-                print("cached")
-                return [Track(track['id'], track['data'], requester=ctx.author) for track in track]
+        tracks = await self.load_tracks(query)
+        if tracks:
+            print("cached")
+            p = ctx.player
+            for track in tracks:
+                await p.queue.put(Track(track['id'], track['data'], requester=ctx.author))
+                if not p.is_playing:
+                    p.ignore = True
+                    await p.do_next()
+        else:
+            return query
 
+    async def fetch_data(self, ctx, query):
         print("fetched")
-        return await self.fetch_track(ctx, query)
+        tracks = await self.fetch_track(ctx, query)
+        p = ctx.player
+        for track in tracks:
+            if track:
+                await p.queue.put(track)
+                if not p.is_playing:
+                    p.ignore = True
+                    await p.do_next()
 
-    async def _play(self, ctx: NyaNyaContext, query: str, cache=True):
+    async def other_play(self, ctx: NyaNyaContext, query: str, cache=True):
         player = ctx.player  # player for current guild
         prepared = await self.prepare_input(query)
 
-        if len(prepared) > 100:
-            await ctx.send("This query may take a while")
+        if cache:
+            left = await asyncio.gather(*[self.get_data(x, ctx) for x in prepared])
+            left = [x for x in left if x != None]  # cleanup
+        else:
+            left = prepared
 
-        n = 8  # split to chunks
-        chunks = [prepared[i * n:(i + 1) * n] for i in range((len(prepared) + n - 1) // n)]
+        if left:
+            # if len(left) > 100:
+            #     await ctx.send("This query may take a while")
 
-        processed: [[Track] or None] = []
-        for tracks in chunks:
-            processed.extend(
-                await asyncio.gather(*[self.query_tracks(query, ctx, cache) for query in tracks]))  # search for songs
+            n = 50  # split to chunks
+            chunks = [left[i * n:(i + 1) * n] for i in range((len(left) + n - 1) // n)]
 
-        if None in processed:
-            await ctx.send("Some of the tracks couldn't be found")
+            for tracks in chunks:
+                await asyncio.gather(*[self.fetch_data(ctx, query) for query in tracks])
+                # search for songs
 
-        # add all results to queue
-        for track in processed:
-            if not track:
-                continue
+        if player.queue[-1]:
+            await ctx.send(embed=player.queue[-1].embed, delete_after=30)
 
-            for t in track:
-                await player.queue.put(t)
-
-        if not player.is_playing:
-            player.ignore = True
-            await player.do_next()
-
-        if not processed[0] == None:
-            await ctx.send(embed=processed[0][0].embed, delete_after=30)
 
     @commands.is_nsfw()
     @commands.command(aliases=['p'])
     async def play(self, ctx: NyaNyaContext, *, query: str):
         """play a song"""
-        await self._play(ctx, query)
+        await self.other_play(ctx, query)
 
     @commands.cooldown(4, 60, commands.BucketType.user)
     @commands.is_nsfw()
     @commands.command(aliases=['pr'])
     async def playr(self, ctx: NyaNyaContext, *, query: str):
         """Plays without using internal cache may take longer time to load but will retrieve the best results"""
-        await self._play(ctx, query, cache=False)
+        await self.other_play(ctx, query, cache=False)
 
     @commands.command(name='connect', aliases=['join', 'c'])
     async def connect_(self, ctx, *, channel: discord.VoiceChannel = None):
