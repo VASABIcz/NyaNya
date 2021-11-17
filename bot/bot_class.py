@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 from pathlib import Path
 
@@ -21,7 +22,6 @@ from bot.utils.functions_classes import intents, NyaNyaCogs, CodeCounter
 def encod(inter):
     table = {"0": "a", "1": "b", "2": "c", "3": "d", "4": "e", "5": "f", "6": "g", "7": "h", "8": "i", "9": "j"}
     s = ""
-
     for i in str(inter):
         s += table[i]
 
@@ -34,22 +34,24 @@ class Nya_Nya(commands.AutoShardedBot):
     """
 
     def __init__(self, cfg):
-        self.cfg = cfg
-        self.session: aiohttp.ClientSession = aiohttp.ClientSession()
         self.start_time = datetime.datetime.now()
+        self.cfg = cfg
         self.vote = cfg.VOTE
         self.support = cfg.SUPPORT
         self.default_emoji = cfg.DEFAULT_EMOJI
+        self.session = aiohttp.ClientSession()
         self.cog_manager = NyaNyaCogs(self, COGS, STATIC_COGS, IGNORED, COG_DIR)
         self.directory = str(Path(__file__).parent)
         self.loc = CodeCounter()
-        # self.loc.count(self.directory)
-
+        self._setuped = asyncio.Event()
+        self.loc.count(self.directory)
         self.auth_manager = SpotifyClientCredentials(client_id=self.cfg.SPOTIFY_ID,
                                                      client_secret=self.cfg.SPOTIFY_SECTRET)
         self.sp = spotipy.Spotify(auth_manager=self.auth_manager)
-
         self.load_webhook()
+        self.mongo_client = motor.motor_asyncio.AsyncIOMotorClient(self.cfg.MONGO)
+        self.tracker = DiscordUtils.InviteTracker(self)
+        self.wavelink_reload = False
 
         super().__init__(command_prefix=self._get_prefix,
                          intents=intents(),
@@ -60,17 +62,11 @@ class Nya_Nya(commands.AutoShardedBot):
                          case_insensitive=True,
                          strip_after_prefix=True,
                          help_command=Nya_Nya_Help())
-
-        self.mongo_client = motor.motor_asyncio.AsyncIOMotorClient(self.cfg.MONGO)
-
         self.loop.create_task(self.__ainit__())
-
-        self.tracker = DiscordUtils.InviteTracker(self)
-
-        self.wavelink_reload = False
 
     async def __ainit__(self):
         self.pdb: asyncpg.Pool = await asyncpg.create_pool(**self.cfg.DB_CREDENTIALS)
+        self.prefixes = aioredis.from_url(self.cfg.REDIS_PREFIXES, decode_responses=True)
         await self.pdb.execute(dbs.GLOBAL)  # execute initial db query
 
         # TODO in future add this functionalyty to reaction menu
@@ -83,12 +79,11 @@ class Nya_Nya(commands.AutoShardedBot):
 
         await self.wait_until_ready()
         self.instance_name = encod(self.user.id)
-        self.prefixes = aioredis.from_url(self.cfg.REDIS_PREFIXES, decode_responses=True)
-        await self.pdb.execute(
-            dbs.INSTANCE.format(id=self.instance_name))  # execute bot specific query (prefixes etc. )
-
+        await self.pdb.execute(dbs.INSTANCE.format(id=self.instance_name))
+        # execute bot specific query (prefixes etc. )
         self.invite = discord.utils.oauth_url(self.user.id, discord.Permissions(8))  # TODO change permisions etc.
         self.owner_user = self.get_user(self.owner_ids[0])
+        self._setuped.set()
         await self.log_to_db()
 
     # def reload(self):
@@ -179,10 +174,14 @@ class Nya_Nya(commands.AutoShardedBot):
         else:
             return True
 
+    async def wait_until_setuped(self):
+        await self._setuped.wait()
+
     async def _get_prefix(self, bot, msg):
         """
         Get prefix from db.
         """
+        await self.wait_until_setuped()
         if msg.guild:
             guild_prefixes = await self.prefixes.smembers(f'{self.instance_name}_{msg.guild.id}')
         else:
