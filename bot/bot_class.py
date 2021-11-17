@@ -2,7 +2,6 @@ import asyncio
 import datetime
 from pathlib import Path
 
-import DiscordUtils
 import aiohttp
 import aioredis
 import asyncpg
@@ -50,7 +49,7 @@ class Nya_Nya(commands.AutoShardedBot):
         self.sp = spotipy.Spotify(auth_manager=self.auth_manager)
         self.load_webhook()
         self.mongo_client = motor.motor_asyncio.AsyncIOMotorClient(self.cfg.MONGO)
-        self.tracker = DiscordUtils.InviteTracker(self)
+        # self.tracker = DiscordUtils.InviteTracker(self)
         self.wavelink_reload = False
 
         super().__init__(command_prefix=self._get_prefix,
