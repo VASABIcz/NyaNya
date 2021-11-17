@@ -1,9 +1,9 @@
 import datetime
-import logging
 from pathlib import Path
 
 import DiscordUtils
 import aiohttp
+import aioredis
 import asyncpg
 import discord
 import motor.motor_asyncio
@@ -16,8 +16,6 @@ from bot.help_class import Nya_Nya_Help
 from bot.utils.constants import COGS, STATIC_COGS, IGNORED, COG_DIR
 from bot.utils.errors import *
 from bot.utils.functions_classes import intents, NyaNyaCogs, CodeCounter
-
-log = logging.getLogger(__name__)
 
 
 def encod(inter):
@@ -71,30 +69,8 @@ class Nya_Nya(commands.AutoShardedBot):
 
         self.wavelink_reload = False
 
-    async def log_to_db(self):
-        query = "INSERT INTO guilds(id) VALUES ($1)"
-        query2 = "INSERT INTO users(id, name, discriminator) VALUES ($1, $2, $3)"
-        query3 = "INSERT INTO users_in_guilds(guild_id, user_id) VALUES ($1, $2)"
-
-        for guild in self.guilds:
-            try:
-                await self.pdb.execute(query, guild.id)
-            except asyncpg.UniqueViolationError:
-                pass
-
-            for member in guild.members:
-                try:
-                    await self.pdb.execute(query2, member.id, member.name, int(member.discriminator))
-                except asyncpg.UniqueViolationError:
-                    pass
-                try:
-                    await self.pdb.execute(query3, guild.id, member.id)
-                except asyncpg.UniqueViolationError:
-                    pass
-
     async def __ainit__(self):
         self.pdb: asyncpg.Pool = await asyncpg.create_pool(**self.cfg.DB_CREDENTIALS)
-
         await self.pdb.execute(dbs.GLOBAL)  # execute initial db query
 
         # TODO in future add this functionalyty to reaction menu
@@ -107,6 +83,7 @@ class Nya_Nya(commands.AutoShardedBot):
 
         await self.wait_until_ready()
         self.instance_name = encod(self.user.id)
+        self.prefixes = aioredis.from_url("redis://redis_prefixes", decode_responses=True)
         await self.pdb.execute(
             dbs.INSTANCE.format(id=self.instance_name))  # execute bot specific query (prefixes etc. )
 
@@ -130,6 +107,27 @@ class Nya_Nya(commands.AutoShardedBot):
                                                            adapter=discord.AsyncWebhookAdapter(self.session))
         except:
             pass
+
+    async def log_to_db(self):
+        query = "INSERT INTO guilds(id) VALUES ($1)"
+        query2 = "INSERT INTO users(id, name, discriminator) VALUES ($1, $2, $3)"
+        query3 = "INSERT INTO users_in_guilds(guild_id, user_id) VALUES ($1, $2)"
+
+        for guild in self.guilds:
+            try:
+                await self.pdb.execute(query, guild.id)
+            except asyncpg.UniqueViolationError:
+                pass
+
+            for member in guild.members:
+                try:
+                    await self.pdb.execute(query2, member.id, member.name, int(member.discriminator))
+                except asyncpg.UniqueViolationError:
+                    pass
+                try:
+                    await self.pdb.execute(query3, guild.id, member.id)
+                except asyncpg.UniqueViolationError:
+                    pass
 
     async def on_ready(self):
         """
@@ -186,15 +184,17 @@ class Nya_Nya(commands.AutoShardedBot):
         Get prefix from db.
         """
         if msg.guild:
-            guild_prefixes = (x[0] for x in
-                              await self.pdb.fetch(
-                                  f"SELECT prefix FROM {bot.instance_name}_prefixes where guild_id = $1", msg.guild.id)
-                              if
-                              x is not None)
+            guild_prefixes = await self.prefixes.smembers(f'{self.instance_name}_{msg.guild.id}')
         else:
             guild_prefixes = ()
 
         return commands.when_mentioned_or(*guild_prefixes, self.cfg.MAIN_PREFIX)(self, msg)
+
+    async def add_prefix(self, ctx, prefix):
+        await self.prefixes.sadd(f'{self.instance_name}_{ctx.guild.id}', prefix)
+
+    async def remove_prefix(self, ctx, prefix):
+        await self.prefixes.srem(f'{self.instance_name}_{ctx.guild.id}', prefix)
 
 
 class NyaCog(commands.Cog):
