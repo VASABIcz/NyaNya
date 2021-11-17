@@ -83,7 +83,7 @@ class Nya_Nya(commands.AutoShardedBot):
 
         await self.wait_until_ready()
         self.instance_name = encod(self.user.id)
-        self.prefixes = aioredis.from_url("redis://redis_prefixes", decode_responses=True)
+        self.prefixes = aioredis.from_url(self.cfg.REDIS_PREFIXES, decode_responses=True)
         await self.pdb.execute(
             dbs.INSTANCE.format(id=self.instance_name))  # execute bot specific query (prefixes etc. )
 

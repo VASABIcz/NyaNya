@@ -81,34 +81,43 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                     # connect (nothing) cant happen manually
 
     @run_in_executor
-    def extractor(self, URL: str):
-        try:
-            if "https://open.spotify.com/track" in URL:
-                track = self.bot.sp.track(URL)
-                return [f"{track['name']} {track['artists'][0]['name']}"]
-            elif "https://open.spotify.com/playlist" in URL or "https://open.spotify.com/album" in URL:
-                songs = []
-                if "https://open.spotify.com/album" in URL:
-                    res = self.bot.sp.album(URL)
-                else:
-                    res = self.bot.sp.playlist(URL)
+    def extractor(self, URL: str) -> [str]:
+        if "https://open.spotify.com/track" in URL:
+            track = self.bot.sp.track(URL)
+            if not track:
+                raise BadSpotify(f"\"{URL}\" is invalid")
+            return [f"{track['name']} {track['artists'][0]['name']}"]
+        elif "https://open.spotify.com/playlist" in URL or "https://open.spotify.com/album" in URL:
+            songs = []
+            if "https://open.spotify.com/album" in URL:
+                res = self.bot.sp.album(URL)
+                if not res:
+                    raise BadSpotify(f"\"{URL}\" is invalid")
                 tracks = res['tracks']
-
+                for _ in range(ceil((res['tracks']['total']) / 100)):
+                    songs.extend(
+                        f"{item['name']} {item['artists'][0]['name']}" for item in tracks['items'])
+                    tracks = self.bot.sp.next(tracks)
+                return songs
+            else:
+                res = self.bot.sp.playlist(URL)
+                if not res:
+                    raise BadSpotify(f"\"{URL}\" is invalid")
+                tracks = res['tracks']
                 for _ in range(ceil((res['tracks']['total']) / 100)):
                     songs.extend(
                         f"{item['track']['name']} {item['track']['artists'][0]['name']}" for item in tracks['items'])
                     tracks = self.bot.sp.next(tracks)
-
                 return songs
-        except:
-            raise BadSpotify(f"{URL} is an invalid spotify url.")
 
-    async def prepare_input(self, query):
+        raise BadSpotify(f"\"{URL}\" is invalid")
+
+    async def prepare_input(self, query: str) -> [str]:
         """
         Parses query to list of queries
         Currently supports youtube and spotify.
         """
-        query = query.strip('<>')  # handle no embed link
+        query = query.strip('<>')
         if 'https://open.spotify.com/' in query:
             prepared = await self.extractor(query)
         else:
@@ -190,7 +199,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                 if r['query'] == best[0]:
                     return r['meta']
 
-    async def get_data(self, query: str, ctx: NyaNyaContext):
+    async def get_data(self, query: str, ctx: NyaNyaContext) -> str or None:
         """
         Retrieve Tracks from cache.
         """
