@@ -34,3 +34,8 @@ services:
       - mongo
     restart: always
     command: python3 main.py
+
+  redis_prefixes:
+    image: redis
+    volumes:
+      - ./data/redis_prefixes:/data
