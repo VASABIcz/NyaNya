@@ -1,9 +1,7 @@
 import io
 import sys
-import time
 import typing
 
-import asyncpg
 import discord
 import expr
 import humanize
@@ -14,7 +12,7 @@ from discord.ext import commands
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
 from bot.utils.embeds import calculator_embed, loc_embed
-from bot.utils.functions_classes import NyaEmbed
+from bot.utils.functions_classes import NyaEmbed, Timer
 
 
 class Misc(commands.Cog):
@@ -33,17 +31,20 @@ class Misc(commands.Cog):
         """
         Show bot and database latency.
         """
-        t = time.time()
-        await self.bot.pdb.fetch("SELECT 1")
-        post = time.time() - t
-        t = time.time()
-        await self.bot.mongo_client.production.music_cache.find_one({})
-        mongo = time.time() - t
+        with Timer() as post:
+            await self.bot.pdb.fetch("SELECT 1")
+        with Timer() as mongo:
+            await self.bot.mongo_client.production.music_cache.find_one({})
+        with Timer() as redis:
+            await self.bot.prefixes.ping()
 
-        embed = NyaEmbed(title="average latency")
+        embed = NyaEmbed(title="latency to our services")
         embed.add_field(name="Discord API", value=f"```{self.bot.latency * 1000:.2f}ms```")
-        embed.add_field(name="mongoDB", value=f"```{post * 1000:.2f}ms```")
-        embed.add_field(name="postgresql", value=f"```{mongo * 1000:.2f}ms```")
+        embed.add_field(name="MongoDB", value=f"```{post.time * 1000:.2f}ms```")
+        embed.add_field(name="PostgreSQL", value=f"```{mongo.time * 1000:.2f}ms```")
+        embed.add_field(name="Redis", value=f"```{redis.time * 1000:.2f}ms```")
+        embed.add_field(name=f"\u200b", value=f"\u200b")
+        embed.add_field(name=f"\u200b", value=f"\u200b")
 
         await ctx.send(embed=embed)
 
@@ -59,12 +60,7 @@ class Misc(commands.Cog):
         """
         Add a custom guild prefix.
         """
-        query = f"INSERT INTO {self.bot.instance_name}_prefixes(guild_id, prefix) VALUES ($1, $2)"
-        try:
-            await self.bot.pdb.execute(query, ctx.guild.id, prefix)
-        except asyncpg.UniqueViolationError:
-            pass
-
+        await self.bot.add_prefix(ctx, prefix)
         await ctx.ok()
 
     @commands.guild_only()
@@ -73,8 +69,7 @@ class Misc(commands.Cog):
         """
         Remvoe a guild prefix.
         """
-        query = f"DELETE FROM {self.bot.instance_name}_prefixes WHERE prefix = $1 and guild_id = $2"
-        await self.bot.pdb.execute(query, prefix, ctx.guild.id)
+        await self.bot.remove_prefix(ctx, prefix)
         await ctx.ok()
 
     @commands.guild_only()
@@ -83,8 +78,7 @@ class Misc(commands.Cog):
         """
         Show a prefixe's for your guild.
         """
-        query = f"SELECT prefix FROM {self.bot.instance_name}_prefixes where guild_id = $1"
-        prefixes = [x[0] for x in await self.bot.pdb.fetch(query, ctx.guild.id)]
+        prefixes = await self.bot.prefixes.smembers(f'{self.bot.instance_name}_{ctx.guild.id}')
         await ctx.send_list(prefixes, "Prefixes")
 
     @commands.command(name="calculate", aliases=['calc'])
