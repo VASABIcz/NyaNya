@@ -8,8 +8,6 @@ googletrans~=3.0.0
 jishaku~=2.3.0
 wavelink~=0.9.10
 asyncpg~=0.24.0
-uvloop
-expr.py
 psutil~=5.8.0
 humanize~=3.12.0
 DiscordUtils~=1.3.4
@@ -18,5 +16,5 @@ qrcode~=7.3.1
 textdistance~=4.2.1
 aioredis~=2.0.0
 motor~=2.5.1
-redisearch~=2.0.0
-pymongo~=3.12.1
+uvloop
+expr.py
