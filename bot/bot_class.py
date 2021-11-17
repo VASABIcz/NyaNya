@@ -43,7 +43,7 @@ class Nya_Nya(commands.AutoShardedBot):
         self.directory = str(Path(__file__).parent)
         self.loc = CodeCounter()
         self._setuped = asyncio.Event()
-        self.loc.count(self.directory)
+        # self.loc.count(self.directory)
         self.auth_manager = SpotifyClientCredentials(client_id=self.cfg.SPOTIFY_ID,
                                                      client_secret=self.cfg.SPOTIFY_SECTRET)
         self.sp = spotipy.Spotify(auth_manager=self.auth_manager)
