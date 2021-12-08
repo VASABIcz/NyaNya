@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-from pathlib import Path
 
 import aiohttp
 import aioredis
@@ -10,12 +9,12 @@ import motor.motor_asyncio
 import spotipy
 from spotipy import SpotifyClientCredentials
 
-import database.setup as dbs
+import database.setup as sql_template
 from bot.context_class import NyaNyaContext
 from bot.help_class import Nya_Nya_Help
 from bot.utils.constants import COGS, STATIC_COGS, IGNORED, COG_DIR
 from bot.utils.errors import *
-from bot.utils.functions_classes import intents, NyaNyaCogs, CodeCounter
+from bot.utils.functions_classes import intents, NyaNyaCogs
 
 
 def encod(inter):
@@ -40,8 +39,8 @@ class Nya_Nya(commands.AutoShardedBot):
         self.default_emoji = cfg.DEFAULT_EMOJI
         self.session = aiohttp.ClientSession()
         self.cog_manager = NyaNyaCogs(self, COGS, STATIC_COGS, IGNORED, COG_DIR)
-        self.directory = str(Path(__file__).parent)
-        self.loc = CodeCounter()
+        # self.directory = str(Path(__file__).parent)
+        # self.loc = CodeCounter()
         self._setuped = asyncio.Event()
         # self.loc.count(self.directory)
         self.auth_manager = SpotifyClientCredentials(client_id=self.cfg.SPOTIFY_ID,
@@ -49,8 +48,8 @@ class Nya_Nya(commands.AutoShardedBot):
         self.sp = spotipy.Spotify(auth_manager=self.auth_manager)
         self.load_webhook()
         self.mongo_client = motor.motor_asyncio.AsyncIOMotorClient(self.cfg.MONGO)
-        # self.tracker = DiscordUtils.InviteTracker(self)
         self.wavelink_reload = False
+        self.prefixes = aioredis.from_url(self.cfg.REDIS_PREFIXES, decode_responses=True)
 
         super().__init__(command_prefix=self._get_prefix,
                          intents=intents(),
@@ -65,8 +64,7 @@ class Nya_Nya(commands.AutoShardedBot):
 
     async def __ainit__(self):
         self.pdb: asyncpg.Pool = await asyncpg.create_pool(**self.cfg.DB_CREDENTIALS)
-        self.prefixes = aioredis.from_url(self.cfg.REDIS_PREFIXES, decode_responses=True)
-        await self.pdb.execute(dbs.GLOBAL)  # execute initial db query
+        await self.pdb.execute(sql_template.GLOBAL)  # execute initial db query
 
         # TODO in future add this functionalyty to reaction menu
 
@@ -78,17 +76,13 @@ class Nya_Nya(commands.AutoShardedBot):
 
         await self.wait_until_ready()
         self.instance_name = encod(self.user.id)
-        await self.pdb.execute(dbs.INSTANCE.format(id=self.instance_name))
-        # execute bot specific query (prefixes etc. )
+        await self.pdb.execute(sql_template.INSTANCE.format(id=self.instance_name))
         self.invite = discord.utils.oauth_url(self.user.id, discord.Permissions(8))  # TODO change permisions etc.
         self.owner_user = self.get_user(self.owner_ids[0])
         self._setuped.set()
+
         await self.log_to_db()
 
-    # def reload(self):
-    #     self.cfg = importlib.reload(cfg)
-    #     self.wavelink_reload = True
-    #     self.load_webhook()
 
     def load_webhook(self):
         try:
@@ -137,7 +131,8 @@ class Nya_Nya(commands.AutoShardedBot):
         print("[*] CONNECTED")
 
     async def on_message_edit(self, before, after):
-        if before.content != after.content:  # prevents double invocation ex.: (when u send spotify url it edits message and adds embed)
+        if before.content != after.content and self._blacklist(
+                after):  # prevents double invocation ex.: (when u send spotify url it edits message and adds embed)
             await self.process_commands(after)
 
     async def run(self):
@@ -151,7 +146,6 @@ class Nya_Nya(commands.AutoShardedBot):
         for cog in COGS:
             self.load_extension(f"bot.cogs.{cog}")
 
-        # super().run(self.cfg.TOKEN)
         await self.start(self.cfg.TOKEN)
 
     async def get_context(self, message, *, cls=None):
@@ -160,15 +154,26 @@ class Nya_Nya(commands.AutoShardedBot):
         """
         return await super().get_context(message, cls=cls or NyaNyaContext)
 
+    @property
+    async def user_bans(self) -> list:
+        return [x[0] for x in await self.pdb.fetch("SELECT id FROM users where banned = true")]
 
-    async def _blacklist(self, ctx: NyaNyaContext):
+    @property
+    async def guild_bans(self) -> list:
+        return [x[0] for x in await self.pdb.fetch("SELECT id FROM guilds where banned = true")]
+
+    @property
+    async def bans(self):
+        return (await self.user_bans).extend((await self.guild_bans))
+
+    async def _blacklist(self, ctx):
         """
         Check if user is blacklisted.
         """
         bans = [x[0] for x in await self.pdb.fetch(
             "SELECT id FROM users where banned = true UNION SELECT id FROM guilds where banned = true")]
 
-        if ctx.author.id in bans and not ctx.author.id in self.owner_ids:
+        if (ctx.author.id in bans or ctx.guild.id in bans) and not ctx.author.id in self.owner_ids:
             return False
         else:
             return True

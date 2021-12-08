@@ -2,7 +2,7 @@ venv
 data
 .github
 README.md
-eee.py
+xdlol/eee.py
 docker-compose.yml
 resources
 lavalink_server

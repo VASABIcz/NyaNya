@@ -24,7 +24,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         self.music_cache = self.bot.mongo_client.production.music_cache
 
         if not hasattr(bot, "wavelink"):
-            self.bot.wavelink = wavelink.Client(bot=bot, session=self.bot.session)
+            self.bot.wavelink = wavelink.Client(bot=bot, session=bot.session)
         self.wavelink = self.bot.wavelink
 
         self.start_nodes.start()
@@ -37,7 +37,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     @tasks.loop(seconds=5.0)
     async def start_nodes(self):
         """
-        Connect and intiate nodes.
+        Connect and initiate nodes.
         Also ensure that we are connected.
         """
         await self.bot.wait_until_ready()
@@ -278,8 +278,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     @playr.before_invoke
     @play.before_invoke
     async def _connect(self, ctx):
-        if not ctx.player.is_connected:
-            await ctx.invoke(self.connect_)
+        await ctx.invoke(self.connect_)
 
     @commands.command(aliases=['s', 'next'])
     async def skip(self, ctx: NyaNyaContext):

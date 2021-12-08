@@ -2,9 +2,10 @@ services:
   lavalink:
     build: lavalink_server
     restart: always
+    ports:
+      - "2333"
     volumes:
       - ./data/lavalink:/opt/Lavalink/logs
-    command: java -jar Lavalink.jar
   db:
     restart: always
     image: postgres
@@ -28,6 +29,8 @@ services:
       - ./data/mongo:/data/db
   bot:
     build: .
+    volumes:
+      - ./bot/cogs:/app/bot/cogs
     depends_on:
       - db
       - lavalink
@@ -39,3 +42,9 @@ services:
     image: redis
     volumes:
       - ./data/redis_prefixes:/data
+
+  nya_link:
+    build: ./nya_link
+    command: python main.py
+    ports:
+      - "8080"

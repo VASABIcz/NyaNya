@@ -36,8 +36,7 @@ class BotInstance:
 
 
 async def main():
-    logger = logging.getLogger('wavelink')
-    logger.setLevel(logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     sys.stdout, sys.stderr, sys.stdin = Unbuffered(sys.stdout), Unbuffered(sys.stderr), Unbuffered(sys.stdin)
 
     for n, instance in enumerate(cfg.INSTANCES):

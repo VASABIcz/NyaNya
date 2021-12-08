@@ -61,7 +61,7 @@ class Unbuffered:
 class CodeBlock:
     """Custom class for string code and language"""
     text: str
-    language: str
+    language: str = ""
 
     def to_codeblock(self) -> str:
         return codeblock(self.text, self.language)
