@@ -444,6 +444,7 @@ class Music(commands.Cog):
         index = max(index, 0)
         await self.link.skip_to(ctx.guild.id, index)
 
+    @playr.before_invoke
     @play.before_invoke
     async def _connect(self, ctx):
         try:
