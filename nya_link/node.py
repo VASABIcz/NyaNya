@@ -105,7 +105,7 @@ class Node:
         print("querying track", query, self.rest_uri)
 
         if cache:
-            res = await self.client.cache.get(query)
+            res = self.client.cache.get(query, None)
             if res:
                 print("cached")
                 return res
@@ -133,17 +133,17 @@ class Node:
                     continue
 
                 # TODO implement caching done
-                print("fetched")
+                print("fetched", data)
                 if data['playlistInfo']:
                     for track in data['tracks']:
-                        await self.client.cache.put(track['info']['title'], [track])
-                    await self.client.cache.put(query, data['tracks'])
+                        self.client.cache[track['info']['title']] = [track]
+                    self.client.cache[query] = data['tracks']
 
                     return data['tracks']
 
                 for track in data['tracks']:
-                    await self.client.cache.put(track['info']['title'], [track])
-                await self.client.cache.put(query, [data['tracks'][0]])
+                    self.client.cache[track['info']['title']] = [track]
+                self.client.cache[query] = [data['tracks'][0]]
 
                 return [data['tracks'][0]]
 

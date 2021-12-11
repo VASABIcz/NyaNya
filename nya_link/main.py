@@ -5,7 +5,6 @@ from json import loads, dumps
 import aiohttp
 from aiohttp import web
 
-from cache import Cache
 from node import Node
 from player import Player
 
@@ -51,7 +50,7 @@ class NyaLink:
         self.loop = asyncio.get_event_loop()
         self.ws: web.WebSocketResponse = ws
         self.user_id = user_id  # int(self.ws.headers['user_id'])
-        self.cache: Cache = cache
+        self.cache: {} = cache
 
         self.closed = False
 
@@ -292,7 +291,7 @@ class NyaLink:
 if __name__ == '__main__':
     sys.stdout, sys.stderr, sys.stdin = Unbuffered(sys.stdout), Unbuffered(sys.stderr), Unbuffered(sys.stdin)
     routes = web.RouteTableDef()
-    cache = Cache()
+    cache = {}
 
 
     @routes.get('/')
@@ -383,6 +382,7 @@ if __name__ == '__main__':
         client: NyaLink = clients[user_id]
         player = client.get_player(guild_id)
 
+
         async def fetch_task():
             if query:
                 await player.play_fetch(query, requester, cache)
@@ -399,23 +399,19 @@ if __name__ == '__main__':
         return web.Response(text=dumps(player.json_data, indent=4))
 
 
-    @routes.post('/play_data')
-    async def play_data(request: aiohttp.web.Request):
-        d = request.query
-        user_id = int(d['user'])
-        guild_id = int(d['guild'])
-        requester = int(d['requester'])
-        query = d.get('query', '')
-        data = await request.json()
-
-        client: NyaLink = clients[user_id]
-        player = client.get_player(guild_id)
-
-        for d in data:
-            await player.play_data(query, requester, d)
-
-        return web.Response(text=dumps(player.json_data, indent=4))
-
+    # @routes.post('/play_data')
+    # async def play_data(request: aiohttp.web.Request):
+    #     d = request.query
+    #     user_id = int(d['user'])
+    #     guild_id = int(d['guild'])
+    #     requester = int(d['requester'])
+    #     query = d.get('query', '')
+    #     data = await request.json()
+    #     client: NyaLink = clients[user_id]
+    #     player = client.get_player(guild_id)
+    #     for d in data:
+    #         await player.play_data(query, requester, d)
+    #     return web.Response(text=dumps(player.json_data, indent=4))
 
     @routes.get('/players')
     async def players(request: aiohttp.web.Request):
