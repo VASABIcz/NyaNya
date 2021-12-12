@@ -136,8 +136,13 @@ class NyaLink:
         res = await res.text()
         return loads(res)
 
-    async def rest_data(self, guild_id):
-        res = await self.session.get(f"{self.rest}/data?user={self.bot.user.id}&guild={guild_id}")
+    async def rest_player_data(self, guild_id):
+        res = await self.session.get(f"{self.rest}/player_data?user={self.bot.user.id}&guild={guild_id}")
+        res = await res.text()
+        return loads(res)
+
+    async def rest_track_data(self, guild_id, index=0):
+        res = await self.session.get(f"{self.rest}/track_data?user={self.bot.user.id}&guild={guild_id}&index={index}")
         res = await res.text()
         return loads(res)
 
@@ -251,6 +256,30 @@ class Music(commands.Cog):
 
         return embed
 
+    def play_embed(self, data: dict):
+        track = data.get('track', None)
+        player = data['player']
+
+        if track is None:
+            return NyaEmbed(title='No tracks were found for that query')
+
+        requester = self.bot.get_user(track['requester'])
+        track = track['track']
+
+        if player['loop'] == 0:
+            emoji = ""
+        elif player['loop'] == 1:
+            emoji = "🔂"
+        else:
+            emoji = "🔁"
+
+        embed = NyaEmbed(title=track['title'], description=f"🔗[link]({track['uri']})")
+        embed.set_image(url=f"https://img.youtube.com/vi/{track['identifier']}/hqdefault.jpg")
+        embed.set_footer(icon_url=requester.avatar_url,
+                         text=f"{requester.name} | {'⏸️' if player['paused'] else '▶️'} {' | ' + emoji if emoji else ''} | {to_time(player['position'] / 1000)} / {to_time(track['length'] / 1000)}")
+
+        return embed
+
     def chop(self, array: list, page: int, amount: int = 10) -> (list, int, int):
         """
         Split array to pages
@@ -265,30 +294,38 @@ class Music(commands.Cog):
         """
         Plays a tack from yt or spotify
         """
+
+        await self._play(ctx, query)
+
+    @commands.command()
+    async def playr(self, ctx, query):
+        """
+        Play songs without using internal cache can result in slow track resolve, but loads up to date data
+        """
+        await self._play(ctx, query, cache=False)
+
+    async def _play(self, ctx, query, cache=True):
         if not ctx.author.voice:
             return await ctx.send("You need to be connected to voice :)")
 
         data = await self.extractor(query)
         data = await self.link.rest_play(ctx.guild.id, ctx.author.id, data)
-        await ctx.send(embed=self.embed(data))
+        await ctx.send(embed=self.play_embed(data))
 
     @commands.command(aliases=['np', 'currently'])
     async def nowplaying(self, ctx):
         """
         Displays currently playing track
         """
-        data = await self.link.rest_data(ctx.guild.id)
-        if not data or not data['queue']:
-            return await ctx.send("Nothing is playing")
-        print(data)
-        await ctx.send(embed=self.embed(data, new=False))
+        data = await self.link.rest_track_data(ctx.guild.id)
+        await ctx.send(embed=self.play_embed(data))
 
     @commands.command()
     async def queue(self, ctx, page: int = 1):
         """
         Displays current queue
         """
-        data = await self.link.rest_data(ctx.guild.id)
+        data = await self.link.rest_player_data(ctx.guild.id)
         if not data or not data['queue']:
             return await ctx.send("Nothing in queue")
 
@@ -424,18 +461,6 @@ class Music(commands.Cog):
             await self.link.stop(ctx.guild.id)
 
         await self.link.remove(ctx.guild.id, index)
-
-    @commands.command()
-    async def playr(self, ctx, query):
-        """
-        Play songs without using internal cache can result in slow track resolve, but loads up to date data
-        """
-        if not ctx.author.voice:
-            return await ctx.send("You need to be connected to voice :)")
-
-        data = await self.extractor(query)
-        data = await self.link.rest_play(ctx.guild.id, ctx.author.id, data, cache=False)
-        await ctx.send(embed=self.embed(data))
 
     @commands.command()
     async def skipto(self, ctx, index: int):

@@ -100,7 +100,7 @@ class Node:
 
         del self.client.nodes[self.identifier]
 
-    async def _get_tracks(self, query: str, cache=True):
+    async def _get_tracks(self, query: str, cache=True) -> [{}] or None:
         backoff = ExponentialBackoff(base=1)
         print("querying track", query, self.rest_uri)
 
@@ -150,8 +150,9 @@ class Node:
     async def get_tracks(self, query: str, requester_id, cache=True):
         tracks = await self._get_tracks(query, cache=cache)
 
-        return [Track(id_=track['track'], info=track['info'], query=query,
-                      requester_id=requester_id) for track in tracks]
+        if tracks:
+            return [Track(id_=track['track'], info=track['info'], query=query,
+                          requester_id=requester_id) for track in tracks]
 
     async def get_raw_track(self, query: str, cache=True):
         return await self._get_tracks(query, cache=cache)

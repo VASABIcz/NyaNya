@@ -103,8 +103,9 @@ class Que:
         except IndexError:
             return
 
-    def _put(self, item):
+    def _put(self, item) -> int:
         self._queue.append(item)
+        return len(self._queue) - 1
 
     def _get(self):
         return self._queue[0]
@@ -131,12 +132,13 @@ class Que:
             if not waiter.done():
                 waiter.set_result(None)
 
-    async def put(self, item):
+    async def put(self, item) -> int:
         return self.put_nowait(item)
 
-    def put_nowait(self, item):
-        self._put(item)
+    def put_nowait(self, item) -> int:
+        res = self._put(item)
         self._wakeup_all()
+        return res
 
     def get_nowait(self):
         if self.empty():
@@ -231,31 +233,50 @@ class Player:
 
         return res
 
+    def json_play_data(self, track=0) -> dict:
+        res = {}
+        res['player'] = {}
+        player = res['player']
+        player['queue'] = len(self.queue)
+        player['paused'] = self.paused
+        player['loop'] = self.queue.loop
+        player['volume'] = self.volume
+        player['channel'] = self.channel_id
+        player['position'] = self.position
+        player['playing'] = self.playing
+
+        if track is not None:
+            try:
+                track = self.queue[track]
+                res['track'] = {'requester': track.requester_id, 'track': track.info}
+            except:
+                pass
+
+        return res
+
     async def dispatch_next(self):
         self.next.set()
         self.next.clear()
 
     async def core(self):
         while not self.closed:
-            # wait for track
             try:
                 async with async_timeout.timeout(5 * 60):
                     track = await self.queue.get()
-                    print("nuut", self.next)
+                    print("retrived track from queue")
             except asyncio.TimeoutError:
                 await self.destroy()
+            else:
 
-            await self.play(track)
+                await self.play(track)
 
-            # wait for end
-            await self.next.wait()
-            self.next.clear()
+                await self.next.wait()
+                self.next.clear()
 
-            # consume
-            if not self.ignore:
-                print("consuming")
-                self.queue.consume()
-            self.ignore = False  # chance that ignore will be set for ever
+                if not self.ignore:
+                    print("consuming")
+                    self.queue.consume()
+                self.ignore = False
 
     def on_track_stop(self):
         self.next.set()
@@ -271,22 +292,14 @@ class Player:
 
         try:
             channel_id = int(data['channel_id'])
-        except:
+        except Exception:
             channel_id = None
-
-        # self.channel_id = channel_id
-        # return await self.dispatch_voice()
-        # I DONT FUCKING KNOW WHATS HAPPENING JUST WORK PLZ
 
         if channel_id != self.channel_id:
             print("voice channel change")
-            if channel_id and self.channel_id:
-                await self.magic_pause()
-                await self.dispatch_voice()
-            elif self.channel_id and not channel_id:
+            if self.channel_id and not channel_id:
                 await self.destroy()
-            else:
-                await self.dispatch_voice()
+            await self.dispatch_voice()
             self.channel_id = channel_id
         elif data['mute'] == self.mute and data['deaf'] == self.deaf:
             print("idk")
@@ -316,10 +329,10 @@ class Player:
         # TODO implement
         ...
 
-    async def play_fetch(self, query, requester_id, cache=True):
+    async def play_fetch(self, query, requester_id, cache=True) -> [int]:
         res = await self.node.get_tracks(query, requester_id, cache)
-        for track in res:
-            await self.queue.put(track)
+        if res:
+            return [await self.queue.put(track) for track in res]
 
     def update_state(self, state: dict) -> None:
         state = state['state']
