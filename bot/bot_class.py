@@ -189,7 +189,7 @@ class Nya_Nya(commands.AutoShardedBot):
         await self.wait_until_setuped()
         if msg.guild:
             try:
-                async with async_timeout.timeout(1):
+                async with async_timeout.timeout(0.05):  # 50ms normal query takes about 1ms
                     guild_prefixes = await self.prefixes.smembers(f'{self.instance_name}_{msg.guild.id}')
             except Exception:
                 guild_prefixes = ()

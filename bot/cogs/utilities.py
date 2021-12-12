@@ -41,7 +41,7 @@ class Misc(commands.Cog):
             post = f"{float(post) * 1000:.2f} ms"
         try:
             with Timer() as mongo:
-                async with async_timeout.timeout(1):
+                async with async_timeout.timeout(0.05):
                     await self.bot.mongo_client.production.music_cache.find_one({})
         except:
             mongo = "unavailavble"
@@ -49,7 +49,7 @@ class Misc(commands.Cog):
             mongo = f"{float(mongo) * 1000:.2f} ms"
         try:
             with Timer() as redis:
-                async with async_timeout.timeout(1):
+                async with async_timeout.timeout(0.05):
                     await self.bot.prefixes.ping()
         except:
             redis = "unavailable"
