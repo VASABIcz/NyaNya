@@ -3,6 +3,7 @@ import datetime
 
 import aiohttp
 import aioredis
+import async_timeout
 import asyncpg
 import discord
 import motor.motor_asyncio
@@ -187,7 +188,11 @@ class Nya_Nya(commands.AutoShardedBot):
         """
         await self.wait_until_setuped()
         if msg.guild:
-            guild_prefixes = await self.prefixes.smembers(f'{self.instance_name}_{msg.guild.id}')
+            try:
+                async with async_timeout.timeout(1):
+                    guild_prefixes = await self.prefixes.smembers(f'{self.instance_name}_{msg.guild.id}')
+            except Exception:
+                guild_prefixes = ()
         else:
             guild_prefixes = ()
 
