@@ -152,21 +152,6 @@ if __name__ == '__main__':
         print(ree)
         return web.Response(text=dumps(player.json_play_data(track=res), indent=4))
 
-
-    # @routes.post('/play_data')
-    # async def play_data(request: aiohttp.web.Request):
-    #     d = request.query
-    #     user_id = int(d['user'])
-    #     guild_id = int(d['guild'])
-    #     requester = int(d['requester'])
-    #     query = d.get('query', '')
-    #     data = await request.json()
-    #     client: NyaLink = clients[user_id]
-    #     player = client.get_player(guild_id)
-    #     for d in data:
-    #         await player.play_data(query, requester, d)
-    #     return web.Response(text=dumps(player.json_data, indent=4))
-
     @routes.get('/players')
     async def players(request: aiohttp.web.Request):
         d = request.query
