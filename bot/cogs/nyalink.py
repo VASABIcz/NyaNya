@@ -1,6 +1,7 @@
 import asyncio
 from json import dumps, loads
 from math import ceil
+from time import perf_counter
 
 import aiohttp
 import discord
@@ -15,7 +16,7 @@ from bot.utils.functions_classes import NyaEmbed, to_time, max_len, codeblock, r
 # so duno
 
 class NyaLink:
-    def __init__(self, bot, uri, rest, session=None, loop=None):
+    def __init__(self, bot, uri, rest, nodes, session=None, loop=None):
         self.bot = bot
         self.uri = uri
         self.rest = rest
@@ -28,15 +29,13 @@ class NyaLink:
         self.task = None
         self._voice_state = {}
 
-    async def setup(self):
-        nodes = self.bot.cfg.NODES
-        for node in nodes:
-            print(node)
-            print("adding node:", node['identifier'])
-            await self.add_node(node)
+        self.nodes = nodes
 
-        await asyncio.sleep(1)  # small chance that bot will stop playing hope this fixes it
-        await self.sync()
+    @property
+    async def ping(self) -> float:
+        s = perf_counter()
+        await self.rest_players()
+        return perf_counter() - s
 
     @property
     def headers(self):
@@ -45,6 +44,15 @@ class NyaLink:
     @property
     def is_connected(self) -> bool:
         return self.ws is not None and not self.ws.closed
+
+    async def setup(self):
+        nodes = self.nodes
+        for node in nodes:
+            print("adding node:", node['identifier'])
+            await self.add_node(node)
+
+        await asyncio.sleep(1)  # small chance that bot will stop playing hope this fixes it
+        await self.sync()
 
     async def _connect(self):
         await self.bot.wait_until_ready()
@@ -117,9 +125,6 @@ class NyaLink:
     async def shuffle(self, guild_id):
         await self.send(op='shuffle', guild_id=guild_id)
 
-    # async def status(self, guild_id):
-    #     await self.send(op='status', guild_id=guild_id)
-
     async def destroy(self, guild_id):
         await self.send(op='destroy', guild_id=guild_id)
 
@@ -155,11 +160,6 @@ class NyaLink:
         res = await self.session.get(f'{self.rest}/players?user={self.bot.user.id}')
         res = await res.text()
         return loads(res)
-
-    async def magic_pause(self, guild_id):
-        await self.pause(guild_id, True)
-        await asyncio.sleep(0.3)
-        await self.pause(guild_id, False)
 
     async def voice_update(self, data):
         # TODO ignore mute/def client and server side
@@ -203,8 +203,10 @@ class NyaLink:
 class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.link = NyaLink(self.bot, uri='ws://nya_link:8080', session=self.bot.session, loop=self.bot.loop,
-                            rest="http://nya_link:8080")
+        self.bot.link = NyaLink(self.bot, uri=f'ws://{self.bot.cfg.NYALINK}', nodes=self.bot.cfg.NODES,
+                                session=self.bot.session, loop=self.bot.loop,
+                                rest=f"http://{self.bot.cfg.NYALINK}")
+        self.link = self.bot.link
 
     @run_in_executor
     def extractor(self, URL: str) -> [str]:
