@@ -2,6 +2,7 @@ import io
 import sys
 import typing
 
+import async_timeout
 import discord
 import expr
 import humanize
@@ -12,7 +13,7 @@ from discord.ext import commands
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
 from bot.utils.embeds import calculator_embed, loc_embed
-from bot.utils.functions_classes import NyaEmbed, Timer
+from bot.utils.functions_classes import NyaEmbed, Timer, codeblock
 
 
 class Misc(commands.Cog):
@@ -31,19 +32,42 @@ class Misc(commands.Cog):
         """
         Show bot and database latency.
         """
-        with Timer() as post:
-            await self.bot.pdb.fetch("SELECT 1")
-        with Timer() as mongo:
-            await self.bot.mongo_client.production.music_cache.find_one({})
-        with Timer() as redis:
-            await self.bot.prefixes.ping()
+        try:
+            with Timer() as post:
+                await self.bot.pdb.fetch("SELECT 1")
+        except:
+            post = "unavailable"
+        else:
+            post = f"{float(post) * 1000:.2f} ms"
+        try:
+            with Timer() as mongo:
+                async with async_timeout.timeout(1):
+                    await self.bot.mongo_client.production.music_cache.find_one({})
+        except:
+            mongo = "unavailavble"
+        else:
+            mongo = f"{float(mongo) * 1000:.2f} ms"
+        try:
+            with Timer() as redis:
+                async with async_timeout.timeout(1):
+                    await self.bot.prefixes.ping()
+        except:
+            redis = "unavailable"
+        else:
+            redis = f"{float(redis) * 1000:.2f} ms"
+        try:
+            link = await self.bot.link.ping
+        except:
+            link = "unavailable"
+        else:
+            link = f"{link * 1000:.2f} ms"
 
         embed = NyaEmbed(title="latency to our services")
-        embed.add_field(name="Discord API", value=f"```{self.bot.latency * 1000:.2f}ms```")
-        embed.add_field(name="MongoDB", value=f"```{post.time * 1000:.2f}ms```")
-        embed.add_field(name="PostgreSQL", value=f"```{mongo.time * 1000:.2f}ms```")
-        embed.add_field(name="Redis", value=f"```{redis.time * 1000:.2f}ms```")
-        embed.add_field(name=f"\u200b", value=f"\u200b")
+        embed.add_field(name="Discord API", value=codeblock(f"{self.bot.latency * 1000:.2f}ms"))
+        embed.add_field(name="MongoDB", value=codeblock(mongo))
+        embed.add_field(name="PostgreSQL", value=codeblock(post))
+        embed.add_field(name="Redis", value=codeblock(redis))
+        embed.add_field(name="NyaLink", value=codeblock(link))
         embed.add_field(name=f"\u200b", value=f"\u200b")
 
         await ctx.send(embed=embed)
