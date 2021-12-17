@@ -25,10 +25,6 @@ clients = {}
 
 
 class Unbuffered:
-    """
-    Used for stdout and stderr.
-    """
-
     def __init__(self, stream):
         self.stream = stream
 
@@ -42,6 +38,7 @@ class Unbuffered:
 
     def __getattr__(self, attr):
         return getattr(self.stream, attr)
+
 
 if __name__ == '__main__':
     sys.stdout, sys.stderr, sys.stdin = Unbuffered(sys.stdout), Unbuffered(sys.stderr), Unbuffered(sys.stdin)
@@ -118,39 +115,6 @@ if __name__ == '__main__':
                     d[user_id]['nodes'][identifier]['players'][guild_id]['loop'] = player.queue.loop
 
         return web.Response(text=dumps(d, indent=4))
-
-
-    @routes.post('/play_fetch')
-    async def play_fetch(request):
-        d = request.query
-        user_id = int(d['user'])
-        guild_id = int(d['guild'])
-        requester = int(d['requester'])
-        cache = bool(d.get('cache', True))
-        data = await request.json()
-
-        client: NyaLink = clients[user_id]
-        player = client.get_player(guild_id)
-
-        ree = []
-
-        n = 4
-        chunks = [data[i * n:(i + 1) * n] for i in range((len(data) + n - 1) // n)]
-        for chunk in chunks:
-            ree.extend(await asyncio.gather(*[player.play_fetch(query, requester, cache) for query in chunk]))
-
-        res = None
-        for indexes in ree:
-            for index in indexes:
-                if index is not None:
-                    res = index
-                    break
-            else:
-                continue
-            break
-
-        print(ree)
-        return web.Response(text=dumps(player.json_play_data(track=res), indent=4))
 
     @routes.get('/players')
     async def players(request: aiohttp.web.Request):
