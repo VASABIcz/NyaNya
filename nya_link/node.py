@@ -2,7 +2,6 @@ import asyncio
 import re
 from urllib.parse import quote
 
-from backoff import ExponentialBackoff
 from player import Track
 from websocket import WebSocket
 
@@ -97,11 +96,12 @@ class Node:
             self.ws.task.cancel()
         except Exception:
             pass
-
-        del self.client.nodes[self.identifier]
+        try:
+            del self.client.nodes[self.identifier]
+        except KeyError:
+            pass
 
     async def _get_tracks(self, query: str, cache=True) -> [{}] or None:
-        backoff = ExponentialBackoff(base=1)
         print("querying track", query, self.rest_uri)
 
         if cache:
@@ -114,22 +114,19 @@ class Node:
             lava_query = query
         else:
             lava_query = f"ytsearch:{query}"
-        for attempt in range(5):
+        for attempt in range(3):
             async with self.session.get(f'{self.rest_uri}/loadtracks?identifier={quote(lava_query)}',
                                         headers={'Authorization': self.password}) as resp:
 
                 print("query track response", resp.status)
                 if not resp.status == 200:
-                    retry = backoff.delay()
-
-                    await asyncio.sleep(retry)
+                    await asyncio.sleep(0.5)
                     continue
 
                 data = await resp.json()
 
                 if not data['tracks']:
-                    retry = backoff.delay()
-                    await asyncio.sleep(retry)
+                    await asyncio.sleep(0.5)
                     continue
 
                 # TODO implement caching done
@@ -153,6 +150,7 @@ class Node:
         if tracks:
             return [Track(id_=track['track'], info=track['info'], query=query,
                           requester_id=requester_id) for track in tracks]
+        return []
 
     async def get_raw_track(self, query: str, cache=True):
         return await self._get_tracks(query, cache=cache)
