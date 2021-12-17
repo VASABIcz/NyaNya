@@ -22,7 +22,8 @@ class WebSocket:
     @property
     def headers(self):
         return {'Authorization': self.password,
-                'User-Id': str(self.user_id)}
+                'User-Id': str(self.user_id),
+                'Client-Name': 'NyaLink'}
 
     @property
     def is_connected(self) -> bool:
@@ -95,24 +96,24 @@ class WebSocket:
         if name == 'TrackEndEvent':
             try:
                 data.get('player').on_track_stop()
-            except:
+            except Exception:
                 pass
         elif name == 'TrackExceptionEvent':
             if data['exception']['severity'] == 'SUSPICIOUS':  # node drops
                 return
             try:
                 data.get('player').on_track_stop()
-            except:
+            except Exception:
                 pass
         elif name == 'TrackStuckEvent':
             try:
                 data.get('player').on_track_stop()
-            except:
+            except Exception:
                 pass
         # elif name == 'TrackStartEvent':
         #     return 'on_track_start', TrackStart(data)
         elif name == 'WebSocketClosedEvent':
-            ...
+            ...  # asyncio.create_task(self.node.client.request_voice_state(data.get('player').guild_id))
 
     async def send(self, **data):
         if self.is_connected:
