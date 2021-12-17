@@ -22,12 +22,16 @@ class NyaLink:
         self.rest = rest
         self.session = session or aiohttp.ClientSession()
         self._loop = loop or asyncio.get_event_loop()
+        self.bot.add_listener(self.voice_update, 'on_socket_response')
 
-        self.closed = False
+        self.closed = True
 
         self._loop.create_task(self._connect())
         self.task = None
+
         self._voice_state = {}
+        self.last_voice_state = {}
+        self.last_server_state = {}
 
         self.nodes = nodes
 
@@ -56,26 +60,50 @@ class NyaLink:
 
     async def _connect(self):
         await self.bot.wait_until_ready()
-        self.ws = await self.session.ws_connect(self.uri, headers=self.headers)
-        self.bot.add_listener(self.voice_update, 'on_socket_response')
-        print("connected")
-        self.closed = False
 
-        if not self.task:
+        while self.closed:
+            self.ws = await self.session.ws_connect(self.uri, headers=self.headers)
+            print("connected")
+            self.closed = False
+
             self.task = self._loop.create_task(self.listener())
-        await self.setup()
+            await self.setup()
+
+    async def disconnect_all(self):
+        """dc from all guilds"""
+        for guild, channel in self._voice_state.values():
+            if channel is not None:
+                await self._get_shard_socket(self.bot.get_guild(guild).shard_id).voice_state(guild, None,
+                                                                                             self_deaf=False)
 
     async def listener(self):
         while True:
             msg = await self.ws.receive()
+            print(msg)
             if msg.type is aiohttp.WSMsgType.CLOSED:
                 self.closed = True
-                await asyncio.sleep(5)
+                self._loop.create_task(self.disconnect_all())
                 if not self.is_connected:
                     self._loop.create_task(self._connect())
+                    self.listener().close()
             else:
-                ...
-                # TODO implement
+                asyncio.create_task(self.process(loads(msg.data)))
+
+    async def process(self, data):
+        print('processing', data)
+        if data['op'] == 'voice_state_request':
+            gid = int(data['guild'])
+            try:
+                await self.send(op='voice_update', data=self.last_server_state[gid])
+                await self.send(op='voice_update', data=self.last_voice_state[gid])
+            except KeyError:
+                pass
+        elif data['op'] == 'play_response':
+            channel = self.bot.get_channel(int(data['channel']))
+            if channel is None:
+                return
+
+            await channel.send(embed=self.play_embed(data['data']))
 
     async def sync(self):
         # we connect with our new ws
@@ -95,8 +123,8 @@ class NyaLink:
                 data_str = data_str.decode('utf-8')
             await self.ws.send_str(data_str)
 
-    async def play(self, guild_id, query, requester):
-        await self.send(op='play', guild_id=guild_id, query=query, requester=requester)
+    async def play(self, guild, data, requester, channel, cache=True):
+        await self.send(op='play', guild=guild, data=data, requester=requester, channel=channel, cache=cache)
 
     async def skip(self, guild_id):
         await self.send(op='skip', guild_id=guild_id)
@@ -133,13 +161,6 @@ class NyaLink:
 
     async def move_player(self, guild_id, node=None):
         await self.send(op='move', guild_id=guild_id, node=node)
-
-    async def rest_play(self, guild_id, requester_id, data, cache=True):
-        res = await self.session.post(
-            f"{self.rest}/play_fetch?user={self.bot.user.id}&guild={guild_id}&requester={requester_id}&cache={cache}",
-            data=dumps(data))
-        res = await res.text()
-        return loads(res)
 
     async def rest_player_data(self, guild_id):
         res = await self.session.get(f"{self.rest}/player_data?user={self.bot.user.id}&guild={guild_id}")
@@ -178,9 +199,11 @@ class NyaLink:
                     ch_id = None
 
                 self._voice_state[int(d['guild_id'])] = ch_id
+                self.last_voice_state[int(d['guild_id'])] = data
 
                 await self.send(op='voice_update', data=data)
             else:
+                self.last_server_state[int(data['d']['guild_id'])] = data
                 await self.send(op='voice_update', data=data)
 
     def _get_shard_socket(self, shard_id: int):
@@ -198,6 +221,29 @@ class NyaLink:
 
     async def disconnect(self, ctx):
         await self._get_shard_socket(ctx.guild.shard_id).voice_state(ctx.guild.id, None, self_deaf=False)
+
+    def play_embed(self, data: dict):
+        track = data.get('track', None)
+
+        if track is None:
+            return NyaEmbed(title='No tracks were found for that query')
+
+        requester = self.bot.get_user(track['requester'])
+        track = track['track']
+
+        if data['loop'] == 0:
+            emoji = ""
+        elif data['loop'] == 1:
+            emoji = "🔂"
+        else:
+            emoji = "🔁"
+
+        embed = NyaEmbed(title=track['title'], description=f"🔗[link]({track['uri']})")
+        embed.set_image(url=f"https://img.youtube.com/vi/{track['identifier']}/hqdefault.jpg")
+        embed.set_footer(icon_url=requester.avatar_url,
+                         text=f"{requester.name} | {'⏸️' if data['paused'] else '▶️'} {' | ' + emoji if emoji else ''} | {to_time(data['position'] / 1000)} / {to_time(track['length'] / 1000)}")
+
+        return embed
 
 
 class Music(commands.Cog):
@@ -260,7 +306,7 @@ class Music(commands.Cog):
 
     def play_embed(self, data: dict):
         track = data.get('track', None)
-        player = data['player']
+        player = data
 
         if track is None:
             return NyaEmbed(title='No tracks were found for that query')
@@ -311,8 +357,7 @@ class Music(commands.Cog):
             return await ctx.send("You need to be connected to voice :)")
 
         data = await self.extractor(query)
-        data = await self.link.rest_play(ctx.guild.id, ctx.author.id, data)
-        await ctx.send(embed=self.play_embed(data))
+        data = await self.link.play(ctx.guild.id, data, ctx.author.id, ctx.channel.id, cache)
 
     @commands.command(aliases=['np', 'currently'])
     async def nowplaying(self, ctx):
