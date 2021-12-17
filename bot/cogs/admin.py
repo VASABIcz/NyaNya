@@ -12,7 +12,7 @@ import textdistance
 from discord.ext import commands
 from jishaku.shell import ShellReader
 
-from bot.bot_class import Nya_Nya, NyaCog
+from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
 from bot.utils.embeds import std_embed, cogman_embed
 from bot.utils.functions_classes import codeblock, CodeConveter, NyaEmbed
@@ -35,7 +35,7 @@ class GlobalChannel(commands.Converter):
                 return
 
 
-class Admin(NyaCog):
+class Admin(commands.Cog):
     """mostly developer utility"""
 
     def __init__(self, bot: Nya_Nya):
