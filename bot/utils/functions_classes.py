@@ -401,6 +401,7 @@ class CodeCounter:
     def count(self, folder):
         for subdir, _, files in os.walk(folder):
             for file in (f for f in files if f.endswith(".py")):
+                print("xd")
                 analysis = SourceAnalysis.from_file(f"{subdir}/{file}", "pygount", encoding="utf-8")
                 self.code += analysis.code_count
                 self.docs += analysis.documentation_count
