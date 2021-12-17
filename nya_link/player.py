@@ -34,6 +34,10 @@ class Track:
     def __repr__(self):
         return f"<{self.__class__}: {str(self)}>"
 
+    @property
+    def json(self):
+        return {'requester': self.requester_id, 'track': self.info}
+
 
 class Old:
     def __init__(self, len):
@@ -95,7 +99,10 @@ class Que:
         del self._queue[index]
 
     def skip_to(self, index):
-        self._queue = self._queue[index:] + self._queue[:index]
+        if self.loop == 0:
+            self._queue = self._queue[index:]
+        else:
+            self._queue = self._queue[index:] + self._queue[:index]
 
     def revert(self):
         try:
@@ -182,6 +189,7 @@ class Player:
         self.next = asyncio.Event()
         self.closed = False
         self.task = asyncio.create_task(self.core())
+        self.worker_task = asyncio.create_task(self.track_worker())
 
         self.ignore = False
         self.voice_state = {}
@@ -195,6 +203,9 @@ class Player:
 
         self.last_update = None
         self.last_position = None
+
+        self.fetch_queue = asyncio.Queue()
+        self._worker = None
 
     @property
     def playing(self):
@@ -221,36 +232,40 @@ class Player:
         return min(position, self.current.duration)
 
     @property
-    def json_data(self) -> dict:
+    def info(self):
         res = {}
-        res['queue'] = [{'track': x.info, 'requester': x.requester_id} for x in self.queue]
         res['paused'] = self.paused
         res['loop'] = self.queue.loop
         res['volume'] = self.volume
         res['channel'] = self.channel_id
         res['position'] = self.position
         res['playing'] = self.playing
+        return res
+
+    @property
+    def json_data(self) -> dict:
+        res = self.info
+        res['queue'] = [x.json for x in self.queue]
 
         return res
 
     def json_play_data(self, track=0) -> dict:
-        res = {}
-        res['player'] = {}
-        player = res['player']
-        player['queue'] = len(self.queue)
-        player['paused'] = self.paused
-        player['loop'] = self.queue.loop
-        player['volume'] = self.volume
-        player['channel'] = self.channel_id
-        player['position'] = self.position
-        player['playing'] = self.playing
+        res = self.info
+        res['queue'] = len(self.queue)
 
         if track is not None:
             try:
                 track = self.queue[track]
-                res['track'] = {'requester': track.requester_id, 'track': track.info}
+                res['track'] = track.json
             except:
                 pass
+
+        return res
+
+    @property
+    def json_base_data(self) -> dict:
+        res = self.info
+        res['queue'] = len(self.queue)
 
         return res
 
@@ -278,6 +293,19 @@ class Player:
                     self.queue.consume()
                 self.ignore = False
 
+    async def track_worker(self):
+        while not self.closed:
+            cache, requester, data, channel = await self.fetch_queue.get()
+            self._worker = asyncio.create_task(self.playe(cache, requester, data))
+            result = await self._worker
+            if result is None:
+                result = self.json_base_data
+            asyncio.create_task(self.send_result(channel, result))
+
+    async def send_result(self, channel, data):
+        print('sending query result', channel)
+        await self.node.client.send(op='play_response', channel=channel, data=data)
+
     def on_track_stop(self):
         self.next.set()
 
@@ -285,14 +313,13 @@ class Player:
         ...
 
     async def on_voice_state(self, data):
-        print("HUH", data)
         self.voice_state.update({
             'sessionId': data['session_id']
         })
 
         try:
             channel_id = int(data['channel_id'])
-        except Exception:
+        except TypeError:
             channel_id = None
 
         if channel_id != self.channel_id:
@@ -302,7 +329,6 @@ class Player:
             await self.dispatch_voice()
             self.channel_id = channel_id
         elif data['mute'] == self.mute and data['deaf'] == self.deaf:
-            print("idk")
             # ignore mute/deaf
             await self.dispatch_voice()
         elif not self.playing:
@@ -325,14 +351,39 @@ class Player:
 
         await self.dispatch_voice()
 
-    async def play_data(self):
-        # TODO implement
-        ...
+    async def playe(self, cache, requester, data):
+        payload = None
+        nodes = list(self.node.client.nodes.values())
 
-    async def play_fetch(self, query, requester_id, cache=True) -> [int]:
-        res = await self.node.get_tracks(query, requester_id, cache)
-        if res:
-            return [await self.queue.put(track) for track in res]
+        n = 4
+        number_nodes = len(self.node.client.nodes)
+        chunks = [data[i * n:(i + 1) * n] for i in range((len(data) + n - 1) // n)]
+        chungus = [chunks[i * number_nodes:(i + 1) * number_nodes] for i in
+                   range((len(chunks) + number_nodes - 1) // number_nodes)]
+
+        async def node_fetch(node, query, requester_id, cache):
+            return await node.get_tracks(query, requester_id, cache)
+
+        for job in chungus:
+            res = await asyncio.gather(
+                *[asyncio.gather(*[node_fetch(nodes[i], query, requester, cache) for query in j]) for i, j in
+                  enumerate(job)])
+            # result: [[[0], [0], [0], [0]], [[0], [0], [0], [0]], [[0], [0], [0], [0]]]
+            for x in res:
+                for e in x:
+                    for y in e:
+                        if y is not None:
+                            if payload is not None:
+                                await self.queue.put(y)
+                            else:
+                                await self.queue.put(y)
+                                payload = self.json_base_data
+                                payload['track'] = y.json
+
+        if payload is None:
+            payload = self.json_base_data
+
+        return payload
 
     def update_state(self, state: dict) -> None:
         state = state['state']
@@ -343,10 +394,12 @@ class Player:
     async def dispatch_voice(self):
         print("before dispatch", self.voice_state)
         if {'sessionId', 'event'} == self.voice_state.keys():
-            # print("dispatching", self.voice_state)
+            print("dispatching", self.voice_state)
             await self.node.send(op='voiceUpdate', guildId=str(self.guild_id), **self.voice_state)
 
     async def destroy(self):
+        print("destroying", self.guild_id)
+        self.closed = True
         await self.stop()
 
         try:
@@ -354,7 +407,6 @@ class Player:
         except KeyError:
             pass
 
-        self.closed = True
         self.task.cancel()
 
     async def stop(self):
@@ -374,7 +426,9 @@ class Player:
                    'noReplace': False,
                    'startTime': '0'
                    }
-
+        # if not self.voice_state:
+        #     print("requesting voice state", self.guild_id)
+        #     # await self.node.client.request_voice_state()
         await self.node.send(**payload)
 
     async def set_pause(self, pause: bool):
@@ -384,10 +438,16 @@ class Player:
     async def seek(self, position):
         await self.node.send(op='seek', guildId=str(self.guild_id), position=position)
 
-    async def magic_pause(self):
-        await self.set_pause(True)
-        await asyncio.sleep(0.3)
-        await self.set_pause(False)
+    async def clear(self):
+        print("clearing fetch queue")
+        self.fetch_queue._queue.clear()
+        if self._worker:
+            print("stoping worker")
+            self._worker.cancel()
+        print("emtying queue")
+        self.queue._queue.clear()
+        await self.stop()
+        # self.ignore = True
 
     async def change_node(self, identifier: str = None) -> None:
         client = self.node.client
@@ -406,7 +466,7 @@ class Player:
             self.node.close()
             node = client.get_best_node()
             self.node.open()
-            print(node)
+            print("starting player transfer to:", node)
             if not node:
                 print("no other node to move players")
                 return

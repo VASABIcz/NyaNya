@@ -1,5 +1,5 @@
 import asyncio
-from json import loads
+from json import loads, dumps
 
 import aiohttp
 from aiohttp import web
@@ -22,6 +22,10 @@ class NyaLink:
 
         self.listener = self.loop.create_task(self.listen())
 
+    @property
+    def players(self):
+        return self._get_players()
+
     def _get_players(self) -> dict:
         players = []
 
@@ -30,16 +34,22 @@ class NyaLink:
 
         return {player.guild_id: player for player in players}
 
-    @property
-    def players(self):
-        return self._get_players()
-
     def get_best_node(self):
         nodes = [n for n in self.nodes.values() if n.is_available]
         if not nodes:
             return None
 
         return sorted(nodes, key=lambda n: len(n.players))[0]
+
+    async def send(self, **data):
+        if not self.closed:
+            data_str = dumps(data)
+            if isinstance(data_str, bytes):
+                data_str = data_str.decode('utf-8')
+            await self.ws.send_str(data_str)
+
+    async def request_voice_state(self, guild_id: int):
+        await self.send(op='voice_state_request', guild=guild_id)
 
     def get_best_stats_node(self):
         nodes = [n for n in self.nodes.values() if n.is_available]
@@ -119,7 +129,10 @@ class NyaLink:
         n = Node(host=host, port=port, user_id=user_id, client=client, session=session, rest_uri=rest_uri,
                  password=password, region=region, identifier=identifier, shard_id=shard_id, secure=secure)
         await n.connect()
-        self.nodes[identifier] = n
+        if n.is_available:
+            self.nodes[identifier] = n
+        else:
+            await n.destroy()
 
     async def remove_node(self, **data):
         identifier = data['identifier']
@@ -139,10 +152,16 @@ class NyaLink:
             await self.remove_node(**data)
         # player
         elif data['op'] == "play":
-            guild_id = int(data['guild_id'])
-            query = data['query']
-            requester = data['requester']
-            await self.get_player(guild_id).play_fetch(query, requester)
+            guild = int(data['guild'])
+            requester = int(data['requester'])
+            channel = int(data['channel'])
+            cache = bool(data['cache'])
+            d = list(data['data'])
+
+            player = self.get_player(guild)
+
+            await player.fetch_queue.put([cache, requester, d, channel])
+
         elif data['op'] == "skip":
             guild_id = int(data['guild_id'])
 
@@ -160,8 +179,7 @@ class NyaLink:
             guild_id = int(data['guild_id'])
 
             p = self.get_player(guild_id)
-            p.queue._queue.clear()
-            await p.stop()
+            await p.clear()
 
         elif data['op'] == 'destroy':
             guild_id = int(data['guild_id'])
