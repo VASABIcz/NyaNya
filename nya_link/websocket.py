@@ -76,7 +76,6 @@ class WebSocket:
 
         if op == 'stats':
             self.node.stats = Stats(self.node, data)
-            print(self.node)
         if op == 'event':
             try:
                 data['player'] = self.node.players[int(data['guildId'])]
