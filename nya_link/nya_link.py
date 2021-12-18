@@ -223,7 +223,7 @@ class NyaLink:
         elif data['op'] == "shuffle":
             guild_id = int(data['guild_id'])
 
-            await self.get_player(guild_id).queue.shuffle()
+            self.get_player(guild_id).queue.shuffle()
 
         elif data['op'] == 'voice_update':
             d = data['data']
