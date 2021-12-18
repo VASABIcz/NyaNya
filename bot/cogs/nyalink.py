@@ -34,6 +34,7 @@ class NyaLink:
         self.last_server_state = {}
 
         self.nodes = nodes
+        self.ws = None
 
     @property
     async def ping(self) -> float:
