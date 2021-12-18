@@ -205,7 +205,7 @@ class Player:
         self.last_position = None
 
         self.fetch_queue = asyncio.Queue()
-        self._worker = None
+        self.working = False
 
     @property
     def playing(self):
@@ -295,12 +295,17 @@ class Player:
 
     async def track_worker(self):
         while not self.closed:
+            self.working = False
+            print("waiting for request")
             cache, requester, data, channel = await self.fetch_queue.get()
-            self._worker = asyncio.create_task(self.playe(cache, requester, data))
-            result = await self._worker
-            if result is None:
-                result = self.json_base_data
+            self.working = True
+            result = await self.playe(cache, requester, data)
+
             asyncio.create_task(self.send_result(channel, result))
+
+    def restart_worker(self):
+        self.worker_task.cancel()
+        self.worker_task = asyncio.create_task(self.track_worker())
 
     async def send_result(self, channel, data):
         print('sending query result', channel)
@@ -441,9 +446,9 @@ class Player:
     async def clear(self):
         print("clearing fetch queue")
         self.fetch_queue._queue.clear()
-        if self._worker:
+        if self.working:
             print("stoping worker")
-            self._worker.cancel()
+            self.restart_worker()
         print("emtying queue")
         self.queue._queue.clear()
         await self.stop()
