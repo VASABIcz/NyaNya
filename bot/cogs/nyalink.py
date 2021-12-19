@@ -310,7 +310,7 @@ class Music(commands.Cog):
         player = data
 
         if track is None:
-            return NyaEmbed(title='No tracks were found for that query')
+            return NyaEmbed(title='Nothing is playing')
 
         requester = self.bot.get_user(track['requester'])
         track = track['track']
