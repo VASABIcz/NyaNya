@@ -32,21 +32,21 @@ class Misc(commands.Cog):
         """
         Show bot and database latency.
         """
-        try:
-            with Timer() as post:
-                await self.bot.pdb.fetch("SELECT 1")
-        except:
-            post = "unavailable"
-        else:
-            post = f"{float(post) * 1000:.2f} ms"
-        try:
-            with Timer() as mongo:
-                async with async_timeout.timeout(0.05):
-                    await self.bot.mongo_client.production.music_cache.find_one({})
-        except:
-            mongo = "unavailavble"
-        else:
-            mongo = f"{float(mongo) * 1000:.2f} ms"
+        # try:
+        #     with Timer() as post:
+        #         await self.bot.pdb.fetch("SELECT 1")
+        # except:
+        #     post = "unavailable"
+        # else:
+        #     post = f"{float(post) * 1000:.2f} ms"
+        # try:
+        #     with Timer() as mongo:
+        #         async with async_timeout.timeout(0.05):
+        #             await self.bot.mongo_client.production.music_cache.find_one({})
+        # except:
+        #     mongo = "unavailavble"
+        # else:
+        #     mongo = f"{float(mongo) * 1000:.2f} ms"
         try:
             with Timer() as redis:
                 async with async_timeout.timeout(0.05):
@@ -64,11 +64,11 @@ class Misc(commands.Cog):
 
         embed = NyaEmbed(title="latency to our services")
         embed.add_field(name="Discord API", value=codeblock(f"{self.bot.latency * 1000:.2f}ms"))
-        embed.add_field(name="MongoDB", value=codeblock(mongo))
-        embed.add_field(name="PostgreSQL", value=codeblock(post))
+        # embed.add_field(name="MongoDB", value=codeblock(mongo))
+        # embed.add_field(name="PostgreSQL", value=codeblock(post))
         embed.add_field(name="Redis", value=codeblock(redis))
         embed.add_field(name="NyaLink", value=codeblock(link))
-        embed.add_field(name=f"\u200b", value=f"\u200b")
+        # embed.add_field(name=f"\u200b", value=f"\u200b")
 
         await ctx.send(embed=embed)
 

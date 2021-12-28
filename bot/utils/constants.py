@@ -3,7 +3,7 @@ from itertools import cycle
 
 EMBED_COLOR = cycle([0x4d0034, 0xEBA2DC, 0xec64a3, 0xc46489])
 
-COGS = ["info", "meme", "utilities", "tarkov", "admin", "listener", "errorh", "stats", "nyalink", "lolapi"]
+COGS = ["info", "meme", "utilities", "tarkov", "admin", "errorh", "stats", "nyalink", "lolapi"]
 
 STATIC_COGS = ["admin", "errorh"]
 

@@ -4,7 +4,6 @@ import os
 import signal
 import sys
 import time
-import typing
 from typing import *
 
 import discord
@@ -125,7 +124,7 @@ class Admin(commands.Cog):
         """
         !!FORCE SHUTDOWN!!
         """
-        await self.bot.pdb.close()
+        # await self.bot.pdb.close()
         await self.bot.session.close()
         os.kill(os.getpid(), signal.SIGTERM)
 
@@ -187,46 +186,46 @@ class Admin(commands.Cog):
 
             await ctx.send_pages(data, max=2000)
 
-    @commands.is_owner()
-    @commands.command(name="ban", hidden=True)
-    async def ban_command(self, ctx, target: typing.Union[discord.User, discord.Guild]):
-        """
-        Bans a user or guild.
-        """
-        if isinstance(target, discord.Guild):
-            query = "UPDATE guilds SET banned = true WHERE id = $1"
-            await self.bot.pdb.execute(query, target.id)
-        else:
-            query = "UPDATE users SET banned = true WHERE id = $1"
-            await self.bot.pdb.execute(query, target.id)
+    # @commands.is_owner()
+    # @commands.command(name="ban", hidden=True)
+    # async def ban_command(self, ctx, target: typing.Union[discord.User, discord.Guild]):
+    #     """
+    #     Bans a user or guild.
+    #     """
+    #     if isinstance(target, discord.Guild):
+    #         query = "UPDATE guilds SET banned = true WHERE id = $1"
+    #         await self.bot.pdb.execute(query, target.id)
+    #     else:
+    #         query = "UPDATE users SET banned = true WHERE id = $1"
+    #         await self.bot.pdb.execute(query, target.id)
 
-    @commands.is_owner()
-    @commands.command(name="unban", hidden=True)
-    async def unban_command(self, ctx: NyaNyaContext, target: typing.Union[discord.User, discord.Guild]):
-        """
-        Unbans a user or guild.
-        """
-        if isinstance(target, discord.Guild):
-            query = "UPDATE guilds SET banned = false WHERE id = $1"
-            await self.bot.pdb.execute(query, target.id)
-        else:
-            query = "UPDATE users SET banned = false WHERE id = $1"
-            await self.bot.pdb.execute(query, target.id)
-        await ctx.send()
+    # @commands.is_owner()
+    # @commands.command(name="unban", hidden=True)
+    # async def unban_command(self, ctx: NyaNyaContext, target: typing.Union[discord.User, discord.Guild]):
+    #     """
+    #     Unbans a user or guild.
+    #     """
+    #     if isinstance(target, discord.Guild):
+    #         query = "UPDATE guilds SET banned = false WHERE id = $1"
+    #         await self.bot.pdb.execute(query, target.id)
+    #     else:
+    #         query = "UPDATE users SET banned = false WHERE id = $1"
+    #         await self.bot.pdb.execute(query, target.id)
+    #     await ctx.send()
 
-    @commands.command(name="bans")
-    async def bans(self, ctx: NyaNyaContext):
-        """
-        Show a list of banned users and guilds.
-        """
-        query = "SELECT id FROM users where banned = true"
-        query2 = "SELECT id FROM guilds where banned = true"
-        user_bans = [str(x[0]) for x in await self.bot.pdb.fetch(query)]
-        guild_bans = [str(x[0]) for x in await self.bot.pdb.fetch(query2)]
-        embed = NyaEmbed(title="Bans")
-        embed.add_field(name="**User bans:**", value="\n".join(user_bans if user_bans else ("None",)))
-        embed.add_field(name="**Guild bans:**", value="\n".join(guild_bans if guild_bans else ("None",)))
-        await ctx.send(embed=embed)
+    # @commands.command(name="bans")
+    # async def bans(self, ctx: NyaNyaContext):
+    #     """
+    #     Show a list of banned users and guilds.
+    #     """
+    #     query = "SELECT id FROM users where banned = true"
+    #     query2 = "SELECT id FROM guilds where banned = true"
+    #     user_bans = [str(x[0]) for x in await self.bot.pdb.fetch(query)]
+    #     guild_bans = [str(x[0]) for x in await self.bot.pdb.fetch(query2)]
+    #     embed = NyaEmbed(title="Bans")
+    #     embed.add_field(name="**User bans:**", value="\n".join(user_bans if user_bans else ("None",)))
+    #     embed.add_field(name="**Guild bans:**", value="\n".join(guild_bans if guild_bans else ("None",)))
+    #     await ctx.send(embed=embed)
 
     @commands.is_owner()
     @commands.command(name="codetest", hidden=True)

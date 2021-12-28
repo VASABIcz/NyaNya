@@ -373,7 +373,7 @@ class Player:
             res = await asyncio.gather(
                 *[asyncio.gather(*[node_fetch(nodes[i], query, requester, cache) for query in j]) for i, j in
                   enumerate(job)])
-            # result: [[[0], [0], [0], [0]], [[0], [0], [0], [0]], [[0], [0], [0], [0]]]
+            # result: [[[Track||Null], [0], [0], [0]], [[0], [0], [0], [0]], [[0], [0], [0], [0]]]
             for x in res:
                 for e in x:
                     for y in e:
@@ -405,14 +405,14 @@ class Player:
     async def destroy(self):
         print("destroying", self.guild_id)
         self.closed = True
-        await self.stop()
+        self.task.cancel()
+        self.worker_task.cancel()
+        await self.clear()
 
         try:
             del self.node.players[self.guild_id]
         except KeyError:
             pass
-
-        self.task.cancel()
 
     async def stop(self):
         await self.node.send(op='stop', guildId=str(self.guild_id))

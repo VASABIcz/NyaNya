@@ -48,8 +48,10 @@ class Nya_Nya_Help(commands.HelpCommand):
             if cog[0]:
                 embed.add_field(name=f"**{cog[0]}**", value=f"```ini\n[{cog[1]}] commands```", inline=True)
 
-        for _ in range(3 - ((len(cogs) - 1) % 3)):  # add invisible field to bottom for better look
-            embed.add_field(name=f"\u200b", value=f"\u200b", inline=True)
+        filler = (len(cogs) - 1) % 3
+        if filler != 0:
+            for _ in range(3 - filler):  # add invisible field to bottom for better look
+                embed.add_field(name=f"\u200b", value=f"\u200b", inline=True)
 
         # TODO better implement no category command removal
         # just cleanup whole help class
@@ -109,9 +111,9 @@ class Nya_Nya_Help(commands.HelpCommand):
         to_iterate = itertools.groupby(filtered, key=get_category)
 
         cogs = [(category, len(list(commands))) for category, commands in to_iterate]
-        query = "SELECT date, content FROM updates order by id desc limit 3"
-        rows = await self.bot.pdb.fetch(query)
-        update = [f"✨<t:{int(row['date'].timestamp())}:R>✨```fix\n= {row['content']}```" for row in rows]
+        # query = "SELECT date, content FROM updates order by id desc limit 3"
+        # rows = await self.bot.pdb.fetch(query)
+        update = []  # [f"✨<t:{int(row['date'].timestamp())}:R>✨```fix\n= {row['content']}```" for row in rows]
         await self.context.send(embed=self.default_help(cogs, update if update else ["Dev is kinda cringe"]))
 
     async def send_cog_help(self, cog):

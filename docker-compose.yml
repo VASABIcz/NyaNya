@@ -6,27 +6,30 @@ services:
       - "2333"
     volumes:
       - ./data/lavalink:/opt/Lavalink/logs
-  db:
-    restart: always
-    image: postgres
-    volumes:
-      - ./data/db:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_DB=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    ports:
-      - "5432"
-  mongo:
-    image: mongo
-    restart: always
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: mongo
-    ports:
-      - "27017"
-    volumes:
-      - ./data/mongo:/data/db
+
+  # db:
+  #   restart: always
+  #   image: postgres
+  #   volumes:
+  #     - ./data/db:/var/lib/postgresql/data
+  #   environment:
+  #     - POSTGRES_DB=postgres
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=postgres
+  #   ports:
+  #     - "5432"
+
+  # mongo:
+  #   image: mongo
+  #   restart: always
+  #   environment:
+  #     MONGO_INITDB_ROOT_USERNAME: root
+  #     MONGO_INITDB_ROOT_PASSWORD: mongo
+  #   ports:
+  #     - "27017"
+  #   volumes:
+  #     - ./data/mongo:/data/db
+
   bot:
     build: .
     volumes:

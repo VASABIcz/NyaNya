@@ -30,7 +30,8 @@ class NyaLink:
         players = []
 
         for node in self.nodes.values():
-            players.extend(node.players.values())
+            if node is not None:  # TODO FIX THIS
+                players.extend(node.players.values())
 
         return {player.guild_id: player for player in players}
 

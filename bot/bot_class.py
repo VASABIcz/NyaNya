@@ -6,11 +6,9 @@ import aioredis
 import async_timeout
 import asyncpg
 import discord
-import motor.motor_asyncio
 import spotipy
 from spotipy import SpotifyClientCredentials
 
-import database.setup as sql_template
 from bot.context_class import NyaNyaContext
 from bot.help_class import Nya_Nya_Help
 from bot.utils.constants import COGS, STATIC_COGS, IGNORED, COG_DIR
@@ -35,7 +33,7 @@ class Nya_Nya(commands.AutoShardedBot):
         self.auth_manager = SpotifyClientCredentials(client_id=self.cfg.SPOTIFY_ID,
                                                      client_secret=self.cfg.SPOTIFY_SECTRET)
         self.sp = spotipy.Spotify(auth_manager=self.auth_manager)
-        self.mongo_client = motor.motor_asyncio.AsyncIOMotorClient(self.cfg.MONGO)
+        # self.mongo_client = motor.motor_asyncio.AsyncIOMotorClient(self.cfg.MONGO)
         self.prefixes = aioredis.from_url(self.cfg.REDIS_PREFIXES, decode_responses=True)
         self.wavelink_reload = False
 
@@ -52,8 +50,8 @@ class Nya_Nya(commands.AutoShardedBot):
         self.loop.create_task(self.__ainit__())
 
     async def __ainit__(self):
-        self.pdb: asyncpg.Pool = await asyncpg.create_pool(**self.cfg.DB_CREDENTIALS)
-        await self.pdb.execute(sql_template.GLOBAL)  # execute initial db query
+        # self.pdb: asyncpg.Pool = await asyncpg.create_pool(**self.cfg.DB_CREDENTIALS)
+        # await self.pdb.execute(sql_template.GLOBAL)  # execute initial db query
 
         # TODO in future add this functionality to reaction menu
 
@@ -66,7 +64,7 @@ class Nya_Nya(commands.AutoShardedBot):
 
         self.instance_name = self.encod
 
-        await self.pdb.execute(sql_template.INSTANCE.format(id=self.instance_name))
+        # await self.pdb.execute(sql_template.INSTANCE.format(id=self.instance_name))
 
         self.invite = discord.utils.oauth_url(self.user.id, discord.Permissions(8))  # TODO change permisions etc.
         self.owner_user = self.get_user(self.owner_ids[0])
@@ -84,18 +82,18 @@ class Nya_Nya(commands.AutoShardedBot):
 
         return s
 
-    @property
-    async def user_bans(self) -> list:
-        return [x[0] for x in await self.pdb.fetch("SELECT id FROM users where banned = true")]
-
-    @property
-    async def guild_bans(self) -> list:
-        return [x[0] for x in await self.pdb.fetch("SELECT id FROM guilds where banned = true")]
-
-    @property
-    async def bans(self):
-        return [x[0] for x in await self.pdb.fetch(
-            "SELECT id FROM users where banned = true UNION SELECT id FROM guilds where banned = true")]
+    # @property
+    # async def user_bans(self) -> list:
+    #     return [x[0] for x in await self.pdb.fetch("SELECT id FROM users where banned = true")]
+    #
+    # @property
+    # async def guild_bans(self) -> list:
+    #     return [x[0] for x in await self.pdb.fetch("SELECT id FROM guilds where banned = true")]
+    #
+    # @property
+    # async def bans(self):
+    #     return [x[0] for x in await self.pdb.fetch(
+    #         "SELECT id FROM users where banned = true UNION SELECT id FROM guilds where banned = true")]
 
     async def prefixess(self, guild_id):
         return await self.prefixes.smembers(f'{self.instance_name}_{guild_id}')
@@ -105,7 +103,7 @@ class Nya_Nya(commands.AutoShardedBot):
         Bot is ready to run.
         """
         print(f"[*] LOADED {self.latency * 1000:.2f} ms")
-        await self.log_to_db()
+        # await self.log_to_db()
 
     async def on_connect(self):
         """
@@ -122,7 +120,7 @@ class Nya_Nya(commands.AutoShardedBot):
         """
         Run bot.
         """
-        self.add_check(self._blacklist)
+        # self.add_check(self._blacklist)
         self.load_extension("jishaku")
         self.get_cog("Jishaku").emoji = "👨‍💻"
 
