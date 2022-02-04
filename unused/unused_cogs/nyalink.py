@@ -189,6 +189,7 @@ class NyaLink:
             return
 
         if data['t'] in ('VOICE_SERVER_UPDATE', 'VOICE_STATE_UPDATE'):
+            print("voids",data)
             if data['t'] == 'VOICE_STATE_UPDATE':
                 d = data['d']
 

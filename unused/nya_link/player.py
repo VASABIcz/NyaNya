@@ -5,6 +5,7 @@ import random as r
 import time
 
 import async_timeout
+from queue import Que, Old
 
 
 class Track:
@@ -39,147 +40,6 @@ class Track:
         return {'requester': self.requester_id, 'track': self.info}
 
 
-class Old:
-    def __init__(self, len):
-        self.len = len
-        self._queue = []
-
-    def put(self, item):
-        if len(self._queue) == self.len:
-            del self._queue[-1]
-
-        self._queue.insert(0, item)
-
-    def get(self):
-        return self._queue.pop(0)
-
-
-class Que:
-    """This custom queue is specifically made for wavelink so u shouldn't use it anywhere else"""
-
-    def __init__(self):
-        self._queue = []
-        self._old = Old(5)
-
-        self._loop = asyncio.get_event_loop()
-        self.loop = 0  # 0 = no loop, 1 = loop one, 2 = loop
-
-        self._getters = collections.deque()
-
-    def __getitem__(self, item):
-        if isinstance(item, slice):
-            return list(itertools.islice(self._queue, item.start, item.stop, item.step))
-        else:
-            return self._queue[item]
-
-    def __iter__(self):
-        return self._queue.__iter__()
-
-    def __len__(self):
-        return len(self._queue)
-
-    @property
-    def loop_emoji(self):
-        if self.loop == 0:
-            return ""
-        elif self.loop == 1:
-            return "🔂"
-        else:
-            return "🔁"
-
-    def clear(self):
-        self._queue.clear()
-
-    def shuffle(self):
-        x1 = self._queue.pop(0)
-        r.shuffle(self._queue)
-        self._queue.insert(0, x1)
-
-    def remove(self, index: int):
-        del self._queue[index]
-
-    def skip_to(self, index):
-        if self.loop == 0:
-            self._queue = self._queue[index:]
-        else:
-            self._queue = self._queue[index:] + self._queue[:index]
-
-    def revert(self):
-        try:
-            self._queue.insert(0, self._old.get())
-        except IndexError:
-            return
-
-    def _put(self, item) -> int:
-        self._queue.append(item)
-        return len(self._queue) - 1
-
-    def _get(self):
-        return self._queue[0]
-
-    def _consume(self):
-        if self._queue:
-            item = self._queue.pop(0)
-            self._old.put(item)
-            return item
-
-    def empty(self):
-        return not self._queue
-
-    def _wakeup_next(self):
-        while self._getters:
-            waiter = self._getters.popleft()
-            if not waiter.done():
-                waiter.set_result(None)
-                break
-
-    def _wakeup_all(self):
-        while self._getters:
-            waiter = self._getters.popleft()
-            if not waiter.done():
-                waiter.set_result(None)
-
-    async def put(self, item) -> int:
-        return self.put_nowait(item)
-
-    def put_nowait(self, item) -> int:
-        res = self._put(item)
-        self._wakeup_all()
-        return res
-
-    def get_nowait(self):
-        if self.empty():
-            raise Exception("random exc in que")
-        return self._get()
-
-    async def get(self):
-        while self.empty():
-            getter = self._loop.create_future()
-            self._getters.append(getter)
-            try:
-                await getter
-            except:
-                getter.cancel()
-                try:
-                    self._getters.remove(getter)
-                except ValueError:
-                    pass
-                if not self.empty() and not getter.cancelled():
-                    self._wakeup_all()
-                raise
-
-        return self.get_nowait()
-
-    def consume(self):
-        if self.loop == 0:
-            self._consume()
-        elif self.loop == 1:
-            ...
-        elif self.loop == 2:
-            if self._queue:
-                self._put(self._queue.pop(0))
-
-
 class Player:
     def __init__(self, guild_id, node):
         self.node = node
@@ -196,6 +56,7 @@ class Player:
 
         self.channel_id = None
         self.current = None
+        self.new_track = False
         self.paused = False
         self.deaf = None
         self.mute = None
@@ -273,6 +134,26 @@ class Player:
         self.next.set()
         self.next.clear()
 
+    async def play_next(self):
+        self.waiting = True
+        try:
+            async with async_timeout.timeout(5 * 60):
+                track = await self.queue.get()
+                print("retrived track from queue")
+        except asyncio.TimeoutError:
+            await self.destroy()
+        else:
+
+            await self.play(track)
+
+            await self.next.wait()
+            self.next.clear()
+
+            if not self.ignore:
+                print("consuming")
+                self.queue.consume()
+            self.ignore = False
+
     async def core(self):
         while not self.closed:
             try:
@@ -312,7 +193,8 @@ class Player:
         await self.node.client.send(op='play_response', channel=channel, data=data)
 
     def on_track_stop(self):
-        self.next.set()
+        if not self.new_track:
+            self.current = None
 
     async def on_track_start(self):
         ...
@@ -373,7 +255,7 @@ class Player:
             res = await asyncio.gather(
                 *[asyncio.gather(*[node_fetch(nodes[i], query, requester, cache) for query in j]) for i, j in
                   enumerate(job)])
-            # result: [[[Track||Null], [0], [0], [0]], [[0], [0], [0], [0]], [[0], [0], [0], [0]]]
+            # result: [[[Track || Null], [0], [0], [0]], [[0], [0], [0], [0]], [[0], [0], [0], [0]]]
             for x in res:
                 for e in x:
                     for y in e:
@@ -419,6 +301,9 @@ class Player:
         self.current = None
 
     async def play(self, track):
+        if self.current:
+            self.new_track = True
+
         self.current = track
 
         self.last_update = 0
@@ -431,9 +316,7 @@ class Player:
                    'noReplace': False,
                    'startTime': '0'
                    }
-        # if not self.voice_state:
-        #     print("requesting voice state", self.guild_id)
-        #     # await self.node.client.request_voice_state()
+
         await self.node.send(**payload)
 
     async def set_pause(self, pause: bool):

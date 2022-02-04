@@ -4,10 +4,7 @@ import datetime
 import aiohttp
 import aioredis
 import async_timeout
-import asyncpg
 import discord
-import spotipy
-from spotipy import SpotifyClientCredentials
 
 from bot.context_class import NyaNyaContext
 from bot.help_class import Nya_Nya_Help
@@ -30,12 +27,7 @@ class Nya_Nya(commands.AutoShardedBot):
         self.load_webhook()
         self.cog_manager = NyaNyaCogs(self, COGS, STATIC_COGS, IGNORED, COG_DIR)
         self._setuped = asyncio.Event()
-        self.auth_manager = SpotifyClientCredentials(client_id=self.cfg.SPOTIFY_ID,
-                                                     client_secret=self.cfg.SPOTIFY_SECTRET)
-        self.sp = spotipy.Spotify(auth_manager=self.auth_manager)
-        # self.mongo_client = motor.motor_asyncio.AsyncIOMotorClient(self.cfg.MONGO)
         self.prefixes = aioredis.from_url(self.cfg.REDIS_PREFIXES, decode_responses=True)
-        self.wavelink_reload = False
 
         super().__init__(command_prefix=self._get_prefix,
                          intents=intents(),
@@ -50,9 +42,6 @@ class Nya_Nya(commands.AutoShardedBot):
         self.loop.create_task(self.__ainit__())
 
     async def __ainit__(self):
-        # self.pdb: asyncpg.Pool = await asyncpg.create_pool(**self.cfg.DB_CREDENTIALS)
-        # await self.pdb.execute(sql_template.GLOBAL)  # execute initial db query
-
         # TODO in future add this functionality to reaction menu
 
         async def bok(ctx):
@@ -64,14 +53,11 @@ class Nya_Nya(commands.AutoShardedBot):
 
         self.instance_name = self.encod
 
-        # await self.pdb.execute(sql_template.INSTANCE.format(id=self.instance_name))
-
         self.invite = discord.utils.oauth_url(self.user.id, discord.Permissions(8))  # TODO change permisions etc.
         self.owner_user = self.get_user(self.owner_ids[0])
 
         self._setuped.set()
 
-        # await self.log_to_db()
 
     @property
     def encod(self):
@@ -82,19 +68,6 @@ class Nya_Nya(commands.AutoShardedBot):
 
         return s
 
-    # @property
-    # async def user_bans(self) -> list:
-    #     return [x[0] for x in await self.pdb.fetch("SELECT id FROM users where banned = true")]
-    #
-    # @property
-    # async def guild_bans(self) -> list:
-    #     return [x[0] for x in await self.pdb.fetch("SELECT id FROM guilds where banned = true")]
-    #
-    # @property
-    # async def bans(self):
-    #     return [x[0] for x in await self.pdb.fetch(
-    #         "SELECT id FROM users where banned = true UNION SELECT id FROM guilds where banned = true")]
-
     async def prefixess(self, guild_id):
         return await self.prefixes.smembers(f'{self.instance_name}_{guild_id}')
 
@@ -103,6 +76,10 @@ class Nya_Nya(commands.AutoShardedBot):
         Bot is ready to run.
         """
         print(f"[*] LOADED {self.latency * 1000:.2f} ms")
+        guild: discord.Guild = self.get_guild(793508687729786880)
+        ch: discord.TextChannel = guild.channels[0]
+        x = await ch.create_invite()
+        print(x)
         # await self.log_to_db()
 
     async def on_connect(self):
@@ -110,11 +87,6 @@ class Nya_Nya(commands.AutoShardedBot):
         Connection established to discord.
         """
         print("[*] CONNECTED")
-
-    async def on_message_edit(self, before, after):
-        if before.content != after.content and self._blacklist(after):
-            # prevents double invocation ex.: (when u send spotify url it edits message and adds embed)
-            await self.process_commands(after)
 
     async def run(self):
         """
@@ -134,17 +106,6 @@ class Nya_Nya(commands.AutoShardedBot):
         Uses custom context instead default.
         """
         return await super().get_context(message, cls=cls or NyaNyaContext)
-
-    async def _blacklist(self, ctx):
-        """
-        Check if user is blacklisted.
-        """
-        bans = await self.bans
-        if (ctx.author.id in bans or ctx.guild.id in bans) and ctx.author.id not in self.owner_ids:
-            return False
-        else:
-            return True
-
     async def wait_until_setuped(self):
         await self._setuped.wait()
 
@@ -180,24 +141,3 @@ class Nya_Nya(commands.AutoShardedBot):
             self.report_webhook = discord.Webhook.from_url(self.cfg.REPORT_WEBHOOK_URL, adapter=a)
         except Exception:
             ...
-
-    async def log_to_db(self):
-        query = "INSERT INTO guilds(id) VALUES ($1)"
-        query2 = "INSERT INTO users(id, name, discriminator) VALUES ($1, $2, $3)"
-        query3 = "INSERT INTO users_in_guilds(guild_id, user_id) VALUES ($1, $2)"
-
-        for guild in self.guilds:
-            try:
-                await self.pdb.execute(query, guild.id)
-            except asyncpg.UniqueViolationError:
-                pass
-
-            for member in guild.members:
-                try:
-                    await self.pdb.execute(query2, member.id, member.name, int(member.discriminator))
-                except asyncpg.UniqueViolationError:
-                    pass
-                try:
-                    await self.pdb.execute(query3, guild.id, member.id)
-                except asyncpg.UniqueViolationError:
-                    pass

@@ -3,17 +3,13 @@ import collections
 import functools
 import itertools
 import json
-import os
 import random as r
 import time
 from dataclasses import dataclass
 
-import async_timeout
 import discord
-import wavelink
 import websockets
 from discord.ext.commands import MemberConverter
-from pygount import SourceAnalysis
 
 from bot.utils.constants import EMBED_COLOR
 from bot.utils.errors import *
@@ -386,27 +382,26 @@ class CodeConveter(commands.Converter):
         return code
 
 
-class CodeCounter:
-    def __init__(self):
-        self.code = 0
-        self.docs = 0
-        self.empty = 0
-
-    def __iter__(self):
-        return iter((self.code, self.docs, self.empty))
-
-    def __repr__(self):
-        return f"Code: {self.code} Docs: {self.docs} Empty: {self.empty}"
-
-    def count(self, folder):
-        for subdir, _, files in os.walk(folder):
-            for file in (f for f in files if f.endswith(".py")):
-                print("xd")
-                analysis = SourceAnalysis.from_file(f"{subdir}/{file}", "pygount", encoding="utf-8")
-                self.code += analysis.code_count
-                self.docs += analysis.documentation_count
-                self.empty += analysis.empty_count
-
+# class CodeCounter:
+#     def __init__(self):
+#         self.code = 0
+#         self.docs = 0
+#         self.empty = 0
+#
+#     def __iter__(self):
+#         return iter((self.code, self.docs, self.empty))
+#
+#     def __repr__(self):
+#         return f"Code: {self.code} Docs: {self.docs} Empty: {self.empty}"
+#
+#     def count(self, folder):
+#         for subdir, _, files in os.walk(folder):
+#             for file in (f for f in files if f.endswith(".py")):
+#                 print("xd")
+#                 analysis = SourceAnalysis.from_file(f"{subdir}/{file}", "pygount", encoding="utf-8")
+#                 self.code += analysis.code_count
+#                 self.docs += analysis.documentation_count
+#                 self.empty += analysis.empty_count
 
 def run_in_executor(f):
     @functools.wraps(f)
@@ -552,74 +547,74 @@ class Que:
                 self._put(self._queue.pop(0))
 
 
-class Player(wavelink.Player):
-    """Custom wavelink Player class."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.queue = Que()
-
-        self.waiting = False
-        self.ignore = False
-
-    async def do_next(self) -> None:
-        if self.is_playing or self.waiting:
-            self.ignore = False
-            return
-
-        if not self.ignore:
-            self.queue.consume()
-
-        self.ignore = False
-        try:
-            self.waiting = True
-            with async_timeout.timeout(5 * 60):
-                track = await self.queue.get()
-        except asyncio.TimeoutError:
-            # No music has been played for 5 minutes, cleanup and disconnect...
-            return await self.teardown()
-
-        await self.play(track)
-        self.waiting = False
-
-    @property
-    def embed(self) -> NyaEmbed:
-        track: Track = self.current
-
-        embed = NyaEmbed(title=track.title, description=f"🔗[link]({track.uri})")
-        embed.set_image(url=track.thumb)
-        embed.set_footer(icon_url=track.requester.avatar_url,
-                         text=f"{track.requester.name} | {'⏸️' if self.paused else '▶️'} { ' | ' + self.queue.loop_emoji if self.queue.loop_emoji else ''} | {to_time(self.position / 1000)} / {to_time(track.length / 1000)}")
-
-        return embed
-
-    @property
-    def channel(self):
-        return self.bot.get_channel(self.channel_id)
-
-    @property
-    def guild(self):
-        return self.bot.get_guild(self.guild_id)
-
-    async def move(self, ch_id, self_deaf=False):
-        self.channel_id = ch_id
-
-    async def teardown(self):
-        try:
-            await self.destroy()
-        except KeyError:
-            pass
-
-    async def connect(self, channel_id: int, self_deaf: bool = False):
-        await super().connect(channel_id, self_deaf)
-
-    async def magic_pause(self, pause=0.3):
-        # this pause will magically make bot play again after moving to new channel
-        await asyncio.sleep(pause)
-        await self.set_pause(True)
-        await asyncio.sleep(pause)
-        await self.set_pause(False)
+# class Player(wavelink.Player):
+#     """Custom wavelink Player class."""
+#
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#
+#         self.queue = Que()
+#
+#         self.waiting = False
+#         self.ignore = False
+#
+#     async def do_next(self) -> None:
+#         if self.is_playing or self.waiting:
+#             self.ignore = False
+#             return
+#
+#         if not self.ignore:
+#             self.queue.consume()
+#
+#         self.ignore = False
+#         try:
+#             self.waiting = True
+#             with async_timeout.timeout(5 * 60):
+#                 track = await self.queue.get()
+#         except asyncio.TimeoutError:
+#             # No music has been played for 5 minutes, cleanup and disconnect...
+#             return await self.teardown()
+#
+#         await self.play(track)
+#         self.waiting = False
+#
+#     @property
+#     def embed(self) -> NyaEmbed:
+#         track: Track = self.current
+#
+#         embed = NyaEmbed(title=track.title, description=f"🔗[link]({track.uri})")
+#         embed.set_image(url=track.thumb)
+#         embed.set_footer(icon_url=track.requester.avatar_url,
+#                          text=f"{track.requester.name} | {'⏸️' if self.paused else '▶️'} { ' | ' + self.queue.loop_emoji if self.queue.loop_emoji else ''} | {to_time(self.position / 1000)} / {to_time(track.length / 1000)}")
+#
+#         return embed
+#
+#     @property
+#     def channel(self):
+#         return self.bot.get_channel(self.channel_id)
+#
+#     @property
+#     def guild(self):
+#         return self.bot.get_guild(self.guild_id)
+#
+#     async def move(self, ch_id, self_deaf=False):
+#         self.channel_id = ch_id
+#
+#     async def teardown(self):
+#         try:
+#             await self.destroy()
+#         except KeyError:
+#             pass
+#
+#     async def connect(self, channel_id: int, self_deaf: bool = False):
+#         await super().connect(channel_id, self_deaf)
+#
+#     async def magic_pause(self, pause=0.3):
+#         # this pause will magically make bot play again after moving to new channel
+#         await asyncio.sleep(pause)
+#         await self.set_pause(True)
+#         await asyncio.sleep(pause)
+#         await self.set_pause(False)
 
 
 def time_converter(time: str) -> float:
@@ -644,25 +639,25 @@ def time_converter(time: str) -> float:
     return actual_time
 
 
-class Track(wavelink.Track):
-    """Wavelink Track object with a requester attribute."""
-
-    __slots__ = ('requester',)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
-
-        self.requester = kwargs.get('requester')
-
-    @property
-    def embed(self) -> NyaEmbed:
-        embed = NyaEmbed(title=self.title)
-        embed.set_image(url=self.thumb)
-        embed.set_footer(icon_url=self.requester.avatar_url,
-                         text=f"{self.requester.name} | {to_time(self.length / 1000)}")
-
-
-        return embed
+# class Track(wavelink.Track):
+#     """Wavelink Track object with a requester attribute."""
+#
+#     __slots__ = ('requester',)
+#
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args)
+#
+#         self.requester = kwargs.get('requester')
+#
+#     @property
+#     def embed(self) -> NyaEmbed:
+#         embed = NyaEmbed(title=self.title)
+#         embed.set_image(url=self.thumb)
+#         embed.set_footer(icon_url=self.requester.avatar_url,
+#                          text=f"{self.requester.name} | {to_time(self.length / 1000)}")
+#
+#
+#         return embed
 
 
 def max_len(text, lenght, end="..."):

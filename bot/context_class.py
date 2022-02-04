@@ -6,7 +6,7 @@ from discord.ext import commands
 from discord.ext.commands import CommandError
 
 from bot.utils.embeds import pretty_list
-from bot.utils.functions_classes import NyaNyaPages, Player, NyaEmbed
+from bot.utils.functions_classes import NyaNyaPages, NyaEmbed
 
 
 class NyaNyaContext(commands.Context):
@@ -80,7 +80,7 @@ class NyaNyaContext(commands.Context):
     async def send_list(self, list, *args, **kwargs):
         await self.send(embed=pretty_list(list, *args, **kwargs))
 
-    @property
-    def player(self) -> Player:
-        if self.guild:
-            return self.bot.wavelink.get_player(guild_id=self.guild.id, cls=Player, context=self)
+    # @property
+    # def player(self) -> Player:
+    #     if self.guild:
+    #         return self.bot.wavelink.get_player(guild_id=self.guild.id, cls=Player, context=self)

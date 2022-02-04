@@ -99,6 +99,7 @@ class WebSocket:
                 pass
         elif name == 'TrackExceptionEvent':
             if data['exception']['severity'] == 'SUSPICIOUS':  # node drops
+                print("VERY_SUS_EXCEPTION", data)
                 return
             try:
                 data.get('player').on_track_stop()
@@ -113,6 +114,10 @@ class WebSocket:
         #     return 'on_track_start', TrackStart(data)
         elif name == 'WebSocketClosedEvent':
             ...  # asyncio.create_task(self.node.client.request_voice_state(data.get('player').guild_id))
+
+        data.get('player').new_track = False
+
+
 
     async def send(self, **data):
         if self.is_connected:

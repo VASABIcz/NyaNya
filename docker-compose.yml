@@ -6,48 +6,29 @@ services:
       - "2333"
     volumes:
       - ./data/lavalink:/opt/Lavalink/logs
-
-  # db:
-  #   restart: always
-  #   image: postgres
-  #   volumes:
-  #     - ./data/db:/var/lib/postgresql/data
-  #   environment:
-  #     - POSTGRES_DB=postgres
-  #     - POSTGRES_USER=postgres
-  #     - POSTGRES_PASSWORD=postgres
-  #   ports:
-  #     - "5432"
-
-  # mongo:
-  #   image: mongo
-  #   restart: always
-  #   environment:
-  #     MONGO_INITDB_ROOT_USERNAME: root
-  #     MONGO_INITDB_ROOT_PASSWORD: mongo
-  #   ports:
-  #     - "27017"
-  #   volumes:
-  #     - ./data/mongo:/data/db
-
   bot:
     build: .
+    restart: always
     volumes:
       - ./bot/cogs:/app/bot/cogs
     depends_on:
       - db
       - lavalink
       - mongo
-    restart: always
     command: python3 main.py
 
   redis_prefixes:
     image: redis
+    restart: always
     volumes:
       - ./data/redis_prefixes:/data
-
   nya_link:
-    build: ./nya_link
-    command: python main.py
+    build: ./koklin
+    restart: always
     ports:
-      - "8080"
+      - "8000"
+    environment:
+      PORT: 8000
+      REDIS_PORT: 6379
+      REDIS_URL: host.docker.internal
+      TOKEN: BQAPAgyxOAqRGocl0i58lKK2SC6x6oGwt3wJbCVGP3-S0e9-EV3HPJpiFpcyYnJPJ9sw49XsYzbyn95wzDAYSq_SfQCK8a9zJV8P-ZEah5MViVuMsEUIcj9rzbrXFWgTXrExmIFW2Njwq_CU8Tyff9zCg_GBUrH6FqLHt9MUy5P8sHEFTBphbBODQzbVUQQeAmek2EYCaKpwNaOqZyWgbUQVlb4N

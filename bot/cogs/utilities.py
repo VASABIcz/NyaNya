@@ -1,4 +1,3 @@
-import io
 import sys
 import typing
 
@@ -7,12 +6,11 @@ import discord
 import expr
 import humanize
 import psutil
-import qrcode
 from discord.ext import commands
 
 from bot.bot_class import Nya_Nya
 from bot.context_class import NyaNyaContext
-from bot.utils.embeds import calculator_embed, loc_embed
+from bot.utils.embeds import calculator_embed
 from bot.utils.functions_classes import NyaEmbed, Timer, codeblock
 
 
@@ -55,28 +53,26 @@ class Misc(commands.Cog):
             redis = "unavailable"
         else:
             redis = f"{float(redis) * 1000:.2f} ms"
-        try:
-            link = await self.bot.link.ping
-        except:
-            link = "unavailable"
-        else:
-            link = f"{link * 1000:.2f} ms"
+        # try:
+        #     link = await self.bot.link.ping
+        # except:
+        #     link = "unavailable"
+        # else:
+        #     link = f"{link * 1000:.2f} ms"
 
         embed = NyaEmbed(title="latency to our services")
         embed.add_field(name="Discord API", value=codeblock(f"{self.bot.latency * 1000:.2f}ms"))
         # embed.add_field(name="MongoDB", value=codeblock(mongo))
         # embed.add_field(name="PostgreSQL", value=codeblock(post))
         embed.add_field(name="Redis", value=codeblock(redis))
-        embed.add_field(name="NyaLink", value=codeblock(link))
         # embed.add_field(name=f"\u200b", value=f"\u200b")
 
         await ctx.send(embed=embed)
 
-    @commands.command(name="linesofcode", aliases=["loc"])
-    async def linesofcode(self, ctx: NyaNyaContext):
-        loc = list(self.bot.loc)
-
-        await ctx.send(embed=loc_embed(*loc))
+    # @commands.command(name="linesofcode", aliases=["loc"])
+    # async def linesofcode(self, ctx: NyaNyaContext):
+    #     loc = list(self.bot.loc)
+    #     await ctx.send(embed=loc_embed(*loc))
 
     @commands.guild_only()
     @commands.command(name="setprefix", aliases=['addprefix', 'apefix', 'newprefix'])
@@ -191,23 +187,23 @@ class Misc(commands.Cog):
     #    xd = await ctx.send(file=discord.File(BytesIO(e), filename="test.png"))
     #    print("d")
 
-    @commands.command(name="qrcode", aliases=['qr'])
-    async def gen_qrcode(self, ctx, *, data: str):
-        """
-        Generates qr code img from text.
-        """
-        if data:
-            img = qrcode.make(data)
-            with io.BytesIO() as image_binary:
-                img.save(image_binary, 'PNG')
-                image_binary.seek(0)
-
-                file = discord.File(image_binary, filename="image.png")
-                embed = NyaEmbed(title="QR code")
-                embed.set_image(url="attachment://image.png")
-                await ctx.send(embed=embed, file=file)
-        else:
-            pass
+    # @commands.command(name="qrcode", aliases=['qr'])
+    # async def gen_qrcode(self, ctx, *, data: str):
+    #     """
+    #     Generates qr code img from text.
+    #     """
+    #     if data:
+    #         img = qrcode.make(data)
+    #         with io.BytesIO() as image_binary:
+    #             img.save(image_binary, 'PNG')
+    #             image_binary.seek(0)
+#
+    #             file = discord.File(image_binary, filename="image.png")
+    #             embed = NyaEmbed(title="QR code")
+    #             embed.set_image(url="attachment://image.png")
+    #             await ctx.send(embed=embed, file=file)
+    #     else:
+    #         pass
 
 
 def setup(bot):
