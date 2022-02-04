@@ -5,3 +5,4 @@ cfg.py
 /bot/utils/lavalink_server/logs
 data
 /bot/utils/lavalink_server/application.yaml
+/unused/

@@ -1,0 +1,10 @@
+textdistance~=4.2.2
+jishaku~=2.3.2
+aiohttp~=3.7.4.post0
+humanize~=3.13.1
+psutil~=5.9.0
+websockets~=10.1
+aioredis~=2.0.1
+discord.py
+expr.py
+uvloop
