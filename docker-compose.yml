@@ -34,5 +34,5 @@ services:
     environment:
       PORT: 8000
       REDIS_PORT: 6379
-      REDIS_URL: host.docker.internal
+      REDIS_URL: nyalink_cache
       TOKEN: sus
