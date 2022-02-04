@@ -16,12 +16,16 @@ services:
       - lavalink
       - mongo
     command: python3 main.py
-
   redis_prefixes:
     image: redis
     restart: always
     volumes:
       - ./data/redis_prefixes:/data
+  nyalink_cache:
+    image: redis
+    restart: always
+    volumes:
+      - ./data/nyalink_cache:/data
   nya_link:
     build: ./koklin
     restart: always
@@ -31,4 +35,4 @@ services:
       PORT: 8000
       REDIS_PORT: 6379
       REDIS_URL: host.docker.internal
-      TOKEN: BQAPAgyxOAqRGocl0i58lKK2SC6x6oGwt3wJbCVGP3-S0e9-EV3HPJpiFpcyYnJPJ9sw49XsYzbyn95wzDAYSq_SfQCK8a9zJV8P-ZEah5MViVuMsEUIcj9rzbrXFWgTXrExmIFW2Njwq_CU8Tyff9zCg_GBUrH6FqLHt9MUy5P8sHEFTBphbBODQzbVUQQeAmek2EYCaKpwNaOqZyWgbUQVlb4N
+      TOKEN: sus
